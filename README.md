@@ -5,7 +5,7 @@ The directory is organized as follows:
 ## Beta
 - beta_pfenning: standard proof of CR for $\beta$-reduction (untyped $\lambda$-calculus)
 - beta_tak: Takahashi's proof (triangle operator) of CR for $\beta$-reduction (untyped $\lambda$-calculus)
-- beta_comp: encoding directly in Beluga's meta-logic of CR for $beta$-reduction (untyped $\lambda$-calculus)
+- beta_comp: encoding directly in Beluga's meta-logic of CR for $\beta$-reduction (untyped $\lambda$-calculus)
 ## Eta
 Proof of CR for $\eta$-reduction via commutation (untyped $\lambda$-calculus)
 ## Beta-Eta
