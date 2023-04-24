@@ -1,0 +1,96 @@
+% pre-terms for PTS, following Barendregt 9? and MK&P
+
+tm : type.
+sort : type.
+
+lam : tm  -> (tm -> tm) -> tm.
+app : tm -> tm -> tm.
+pi : tm -> (tm -> tm) -> tm.
+s : sort -> tm.
+
+% sorts for the l-cube
+t : sort. % Type
+p : sort. % Prop
+% not used yet
+a : sort -> sort -> type.
+r : sort -> sort -> sort -> type.
+
+
+--> : tm -> tm -> type.
+%infix none 10 -->.
+%name --> R.
+
+beta1 :   (app (lam A M1) M2) --> M1 M2.
+
+lm1   :       ({x:tm} M x --> M' x)
+	 -> A --> A'                            
+	 ->            (lam A M) --> (lam A' M').
+
+
+pi1   :       ({x:tm} M x --> M' x)
+	 -> A --> A'                            
+	 ->            (pi A M) --> (pi A' M').
+
+apl1  :              M1 --> M1'
+      ->    (app M1 M2) --> (app M1' M2).
+
+apr1  :              M2 --> M2'
+      ->    (app M1 M2) --> (app M1 M2').
+
+% Multi-step reduction
+
+-->* : tm -> tm -> type.  %infix none 10 -->*.
+			      %name -->* R*.
+
+id1   :    M -->* M.
+step1 : M --> M' -> M' -->* M'' -> M -->* M''.
+
+% Conversion
+
+<-> : tm -> tm -> type.  %infix none 10 <->.
+			     %name <-> C.
+
+refl :    M  <-> M.
+
+sym  :    M  <-> M'
+   <-     M' <-> M.
+
+trans:    M  <-> M''
+   <-     M  <-> M'
+   <-     M' <-> M''.
+
+red  :    M  <->  M'
+   <-     M  -->* M'.
+
+
+% and now we can do the usual CR for beta. Here LF level
+
+pred : tm -> tm -> type.
+ beta : ({x:tm} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (lam U M1) M2) (M1' M2').
+ lm : ({x:tm} pred x x -> pred (M x) (M' x)) -> pred A A' -> 
+        pred (lam A M) (lam A' M').
+ pi : ({x:tm} pred x x -> pred (M x) (M' x)) -> pred A A' -> 
+        pred (pi A M) (pi A' M').
+ ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2').
+
+% schema pctx = block(x:tm, v:pred x x);
+
+
+notlam : tm -> type.
+nl_app : notlam (app _ _).
+
+% schema nctx = block(x:tm, v: notlam x);
+
+% Complete development
+cd : tm -> tm -> type.
+cd_beta : ({x:tm} notlam x -> cd x x -> cd (M x) (M' x)) -> cd N N'
+            -> cd (app (lam A M) N) (M' N').
+ cd_ap : notlam M1 -> cd M1 M1' -> cd M2 M2'
+          -> cd (app M1 M2) (app M1' M2').
+ cd_lm : ({x:tm} notlam x -> cd x x -> cd (M x) (M' x)) -> cd A A'
+          -> cd (lam A M) (lam A' M').
+
+% schema cctx = block(x:tm, u: notlam x, v: cd x x);
+% schema pcctx = block(x:tm, w: pred x x, u: notlam x, v: cd x x);

@@ -1,0 +1,60 @@
+%Eta reduction
+LF eta_red : term -> term -> type =
+| eta : eta_red (lam \x.(app M x)) M
+| cong_app1 : eta_red M1 M1' -> eta_red (app M1 M2) (app M1' M2)
+| cong_app2 : eta_red M2 M2' -> eta_red (app M1 M2) (app M1 M2')
+| cong_lam : ({x:term} eta_red (M x) (M' x))
+              -> eta_red (lam M) (lam M')
+;
+
+%Reflexive closure of eta_red
+LF eta_red= : term -> term -> type =
+| id_e= : eta_red= M M
+| cl_e= : eta_red M N -> eta_red= M N
+;
+
+%Transitive-reflexive closure of eta_red
+LF eta_red* : term -> term -> type =
+| id_e* : eta_red* M M
+| tr_e* : eta_red* M1 M2 -> eta_red* M2 M3
+        -> eta_red* M1 M3
+| cl_e* : eta_red M N -> eta_red* M N
+;
+
+%Transitive-reflexive closure of eta_red (equivalent definition)
+LF multi_eta_red : term -> term -> type =
+| id_eta : multi_eta_red M M
+| step_eta : eta_red M M' -> multi_eta_red M' M''
+             -> multi_eta_red M M''
+;
+
+schema ctx = term;
+
+%Equivalence between the two definitions:
+%Transitivity of multi_eta_red
+rec trans_multi_eta : (g:ctx)[g |- multi_eta_red M M'] -> [g |- multi_eta_red M' M''] -> [g |- multi_eta_red M M''] =
+/ total d (trans_multi_eta _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id_eta] => s
+| [g |- step_eta D1 D2] => let [g |- IH] = trans_multi_eta [g |- D2] s in
+                           [g |- step_eta D1 IH]
+;
+
+rec multi_to_star : (g:ctx) [g |- multi_eta_red M N] -> [g |- eta_red* M N] =
+/ total d (multi_to_star _ _ _ d) /
+fn d => case d of
+| [g |- id_eta] => [g |- id_e*]
+| [g |- step_eta D1 D2] => let [g |- IH2] = multi_to_star [g |- D2] in
+                           [g |- tr_e* (cl_e* D1) IH2]
+
+;
+
+rec star_to_multi : (g:ctx) [g |- eta_red* M N] -> [g |- multi_eta_red M N] =
+/ total d (star_to_multi _ _ _ d) /
+fn d => case d of
+| [g |- id_e*] => [g |- id_eta]
+| [g |- tr_e* D1 D2] => let [g |- IH1] = star_to_multi [g |- D1] in
+                      let [g |- IH2] = star_to_multi [g |- D2] in
+                      trans_multi_eta [g |- IH1] [g |- IH2]
+| [g |- cl_e* D] => [g |- step_eta D id_eta]
+;

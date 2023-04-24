@@ -1,0 +1,14 @@
+%Ordinary eta reduction is substitution closed
+
+rec subst_eta : (g:ctx) {N : [g |- term]} [g, x:term |- eta_red M[..,x] M'[..,x]] -> [g |- eta_red M[..,N] M'[..,N]] =
+/ total d (subst_eta _ _ _ _ d) /
+mlam N => fn d => case d of
+| [g, x:term |- eta] => [g |- eta]
+| [g, x:term |- cong_lam \y.D'[..,y,x]] =>
+                  let [g, x:term|- IH[..,x]] = subst_eta [g, x:term |- N[..]] [g, x:term, y:term |- D'[..,x,y]] in
+                  [g |- cong_lam \x.IH[..,x]]
+| [g, x:term |- cong_app1 D1[..,x]] => let [g |- IH] = subst_eta [g |- N] [g, x:term |- D1[..,x]] in
+                                       [g |- cong_app1 IH]
+| [g, x:term |- cong_app2 D2[..,x]] => let [g |- IH] = subst_eta [g |- N] [g, x:term |- D2[..,x]] in
+                                       [g |- cong_app2 IH]
+;

@@ -1,0 +1,64 @@
+%square eta eta eta* eta=  
+
+LF eta*_eta=_joinable : term -> term -> type =
+| eta*_eta=_result : eta_red* M1 N -> eta_red= M2 N -> eta*_eta=_joinable M1 M2
+;
+
+rec square : (g:ctx) {M : [g |- term]}{M1 : [g |- term]}{M2 : [g |- term]}
+          [g |- eta_red M M1] -> [g |- eta_red M M2]
+          -> [g |- eta*_eta=_joinable M1 M2] =
+/ total d (square _ _ _ _ d _) /
+mlam M => mlam M1 => mlam M2 => fn d => fn s =>
+case d of
+| [g |- eta] => 
+    (case s of
+    | [g |- eta] => [g |- eta*_eta=_result id* id=]
+    | [g |- cong_lam \y.(cong_app1 S'[..,y])] =>
+        let exStrEta [g,x:term |- S'] [g |- H1] e =
+        strengthen [g] [g,x:term |- S'] in
+        let [g,x:term |- refl] = e in
+        [g |- eta*_eta=_result (cl* H1) (cl= eta)]
+    )
+| [g |- cong_app1 D1] : [g |- eta_red (app M1' M') (app M2' M')] =>
+    (case s of
+    | [g |- cong_app1 S1] : [g |- eta_red (app N1' N') (app N2' N')] =>
+        let [g |- eta*_eta=_result IH1 IH2] =
+        square [g |- N1'] _ [g |- N2'] [g |- D1] [g |- S1] in
+        let [g |- IH'] = cong_app1* [g |- N'] [g |- IH1] in
+        let [g |- IH''] = cong_app1= [g |- N'] [g |- IH2] in
+        [g |- eta*_eta=_result IH' IH'']
+    | [g |- cong_app2 S2] : [g |- eta_red (app M' N1') (app M' N2')] =>
+        let [g |- H1] = cong_app2* [g |- M2'] [g |- (cl* S2)] in
+        let [g |- H2] = cong_app1= [g |- N2'] [g |- (cl= D1)] in
+        [g |- eta*_eta=_result H1 H2]
+    )
+| [g |- cong_app2 D2] : [g |- eta_red (app M' M1') (app M' M2')] =>
+    (case s of
+    | [g |- cong_app1 S1] : [g |- eta_red (app N1' N') (app N2' N')] =>
+        let [g |- H1] = cong_app1* [g |- M2'] [g |- (cl* S1)] in
+        let [g |- H2] = cong_app2= [g |- N2'] [g |- (cl= D2)] in
+        [g |- eta*_eta=_result H1 H2]
+    | [g |- cong_app2 S2] : [g |- eta_red (app N' N1') (app N' N2')] =>
+        let [g |- eta*_eta=_result IH1 IH2] =
+        square [g|- N1'] [g |- M2'] [g |- N2'] [g |- D2] [g |- S2] in
+        let [g |- IH'] = cong_app2* [g |- N'] [g |- IH1] in
+        let [g |- IH''] = cong_app2= [g |- N'] [g |- IH2] in
+        [g |- eta*_eta=_result IH' IH'']
+    )
+| [g |- cong_lam \x.D[..,x]] : [g |- eta_red (lam (\x. M')) (lam (\x. M1'))] =>
+    (case s of
+    | [g |- cong_lam \y.D'[..,y]] : [g |- eta_red (lam (\x. M')) (lam (\x. M2'))] =>
+        let [g, y:term |- eta*_eta=_result IH1[..,y] IH2[..,y]] =
+        square [g, y:term |- M'[..,y]][g, y:term |- M1'[..,y]][g, y:term |- M2'[..,y]]
+            [g, y:term |- D[..,y]] [g, y:term |- D'[..,y]] in
+        let [g |- H1] = cong_lam* [g, x:term |- IH1[..,x]] in
+        let [g |- H2] = cong_lam= [g, x:term |- IH2[..,x]] in
+        [g |- eta*_eta=_result H1 H2]
+    | [g |- eta] =>
+        let [g, x:term |- cong_app1 D1[..,x]] = [g, x:term |- D[..,x]] in
+        let exStrEta [g,x:term |- D1] [g |- H1] e =
+        strengthen [g] [g,x:term |- D1] in
+        let [g,x:term |- refl] = e in
+        [g |- eta*_eta=_result (cl* eta) (cl= H1)]
+    )
+;

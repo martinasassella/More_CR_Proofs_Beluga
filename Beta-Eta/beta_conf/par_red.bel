@@ -1,0 +1,25 @@
+%Parallel reduction
+LF pred : term -> term -> type =
+| beta : ({x:term} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (lam M1) M2) (M1' M2')
+| lm : ({x:term} pred x x -> pred (M x) (M' x))
+       -> pred (lam M) (lam M')
+| ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2')
+;
+
+
+%Multi step parallel reduction
+LF mstep_pred : term -> term -> type =
+| id : mstep_pred M M
+| step : pred M M' -> mstep_pred M' M''
+          -> mstep_pred M M''
+;
+
+%Conversion
+LF conv_pred: term -> term -> type =
+| reduce : mstep_pred M M' -> conv_pred M M'
+| expand : mstep_pred M M' -> conv_pred M' M
+| comp : conv_pred M M' -> conv_pred M' M''
+         -> conv_pred M M''
+;

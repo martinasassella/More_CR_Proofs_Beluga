@@ -1,0 +1,14 @@
+%Diamond property
+
+LF dia_prop : tm A -> tm A -> type =
+| dia_res : pred M' N -> pred M'' N -> dia_prop M' M''
+;
+
+rec dia : (g:pcctx){M: [g |- tm A[]]}[g |- pred M M'] -> [g |- pred M M''] -> [g |- dia_prop M' M''] =
+/ total d (dia _ _ _ _ _ d _) /
+mlam M => fn d => fn s => let [g |- S] : [g |- pred M M''] = s in
+                let [g |- red_res H] = cd_tot [g] [g |- M] in
+                let [g |- H1] = tri _ [g |- H] d in
+                let [g |- H2] = tri _ [g |- H] s in
+                [g |- dia_res H1 H2]
+;

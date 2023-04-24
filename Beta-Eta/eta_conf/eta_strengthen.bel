@@ -1,0 +1,26 @@
+inductive exStrEtaRed : (g:ctx) [g,x:term |- eta_red M[..] N] -> ctype =
+| exStrEta : {D : [g,x:term |- eta_red M[..] N]}
+             [g |- eta_red M N'] -> [g,x:term |- eq N'[..] N]
+             -> exStrEtaRed [g,x:term |- D]
+;
+
+rec strengthen : {g : ctx} {D : [g, x:term |- eta_red M[..] N]} -> exStrEtaRed [g, x:term |- D] =
+ %/ total d (strengthen _ _ _ d) /
+ mlam g => mlam D => case [g, x:term |- D] of
+ | [g,x:term |- eta] => exStrEta [g, x:term |- D[..]] [g |- eta] [g,x:term |- refl]
+ | [g,a:term |- cong_lam \x.D'[..,a,x]] =>
+            let exStrEta [g,x:term,y:term |- D'[..,x,y]] [g,a:term |- H1] e =
+            strengthen [g,x:term] [g,x:term,a:term |- D'[..,a,x]] in
+            let [g,x:term,y:term |- refl] = e in
+            exStrEta [g, x:term |- D] [g |- cong_lam \x.H1[..,x]] [g,x:term |- refl]
+ | [g, x:term |- cong_app1 D1] =>
+            let exStrEta [g,x:term |- D1[..,x]] [g |- H1] e =
+            strengthen [g] [g,x:term |- D1[..,x]] in
+            let [g,x:term |- refl] = e in
+            exStrEta [g, x:term ⊢ D] [g ⊢ cong_app1 H1] [g,x:term |- refl]
+ | [g, x:term |- cong_app2 D2] =>
+            let exStrEta [g,x:term |- D2[..,x]] [g |- H2] e =
+            strengthen [g] [g,x:term |- D2[..,x]] in
+            let [g,x:term |- refl] = e in
+            exStrEta [g, x:term ⊢ D] [g ⊢ cong_app2 H2] [g,x:term |- refl]
+ ;

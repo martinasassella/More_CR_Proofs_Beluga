@@ -1,0 +1,37 @@
+%Untyped lambda terms
+LF term : type =
+| lam : (term -> term) -> term
+| app : term -> term -> term
+;
+
+%Parallel reduction
+LF pred : term -> term -> type =
+| beta : ({x:term} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (lam M1) M2) (M1' M2')
+| lm : ({x:term} pred x x -> pred (M x) (M' x))
+       -> pred (lam M) (lam M')
+| ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2')
+;
+
+schema pctx = block(x:term, v:pred x x);
+
+%Not lambda judgement
+LF notlam : term -> type =
+| nl_app : notlam (app _ _)
+;
+
+schema nctx = block(x:term, v: notlam x);
+
+%Complete development
+LF cd : term -> term -> type =
+| cd_beta : ({x:term} notlam x -> cd x x -> cd (M x) (M' x)) -> cd N N'
+            -> cd (app (lam M) N) (M' N')
+| cd_ap : notlam M1 -> cd M1 M1' -> cd M2 M2'
+          -> cd (app M1 M2) (app M1' M2')
+| cd_lm : ({x:term} notlam x -> cd x x -> cd (M x) (M' x))
+          -> cd (lam M) (lam M')
+;
+
+schema cctx = block(x:term, u: notlam x, v: cd x x);
+schema pcctx = block(x:term, w: pred x x, u: notlam x, v: cd x x);

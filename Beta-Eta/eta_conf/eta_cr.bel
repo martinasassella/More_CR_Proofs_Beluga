@@ -1,0 +1,11 @@
+LF confl_prop : term → term → type =
+| confl_result : eta_red* M1 N → eta_red* M2 N → confl_prop M1 M2
+;
+rec eta_confluence : (g:ctx) [g ⊢ eta_red* M M1] → [g ⊢ eta_red* M M2]
+→ [g ⊢ confl_prop M1 M2] =
+/ total d (eta_confluence _ _ _ _ d _ ) /
+fn d ⇒ fn s ⇒
+let [g ⊢ commute_eta_result H1 H2] =
+(commutation_lemma_eta square _ _ _ d s) in
+[g ⊢ confl_result H1 H2]
+;

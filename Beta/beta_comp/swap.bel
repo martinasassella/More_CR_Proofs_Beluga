@@ -1,0 +1,101 @@
+--coverage
+
+%Substitution lemma
+%
+
+inductive swap : {g:ctx} {h:ctx}{$S: [h |- g]} ctype =
+| sw_nil : swap [g] [g] [ g  ⊢ .. ]
+| sw_last : swap [g,x:term,y:term] [g,x:term,y:term] [g, x:term, y:term ⊢ .., y, x]
+| sw_ind : swap [g] [h] [h ⊢ $S] -> swap [g,x:term] [h,x:term] [h, x ⊢ $S[..], x]
+;
+
+rec shift :  isVar [g, x:term ⊢ #p] → isVar [g, y:term, x:term ⊢ #p[..,x]] =
+/ total v (shift _ _ v) /
+fn v ⇒ let vp [g, x:term |- #p] = v in
+       vp [g, y:term, x:term |- #p[..,x]]
+;
+
+rec swap_var :  isVar [g ⊢ M] → 
+               swap [g] [h] [h ⊢ $S] →
+	       isVar [h ⊢ M[$S]] = 
+/ total s (swap_var _ _ _ _ v s) /
+ fn v ⇒ fn s ⇒ let vp [g, x : term  |- #q] = v in
+      (case s of
+        | sw_nil ⇒ vp _
+        | sw_ind sw ⇒ 
+          (case [g, x:term |- #q] of
+         | [g, x:term |- x] => vp _
+         | [g, x:term |- #q[..]] => 
+                let ih = swap_var (vp [g |- #q]) sw in 
+                vn ih
+                )
+        | sw_last ⇒ vp _)
+;
+
+		     
+rec exc0 : (g:ctx) (h : ctx) pred [g |- M] [g |- M']
+                            -> swap [g] [h] [h ⊢ $S] 
+                            -> pred [h |- M[$S]] [h |- M'[$S]] =
+/ total d (exc0 g h m m' s d) / 
+fn p => fn s => case p of
+  | var v ⇒  var (swap_var v s)
+  | beta d1 d2  ⇒
+	let e1 = exc0 d1 (sw_ind s) in
+	let e2 = exc0 d2 s in
+	beta e1 e2
+  | lm d ⇒
+	let e = exc0 d (sw_ind s) in lm e
+  | ap d1 d2 ⇒
+	let e1 = exc0 d1 s in
+	let e2 = exc0 d2 s in
+	ap e1 e2
+;
+
+
+
+
+rec exc1 : (g:ctx) pred [g,w:term,y:term |- M[..,w,y]] [g,w:term,y:term |- M'[..,w,y]]
+                  -> pred [g,y:term,x:term |- M[..,x,y]] [g,y:term,x:term |- M'[..,x,y]] =
+/ total d (exc1 _ _ _ d) / 
+fn d =>  exc0 d sw_last
+;              
+
+
+rec weak : (g:ctx) pred [g |- N] [g |- N']
+	   -> pred [g, y:term |- N[..]] [g, y: term |- N'[..]] =
+/ total d (weak _ _ _ d) /
+fn d => case d of
+  | var (vp [_ |- #q] ) => var (vp _)
+  | beta d1 d2 => let ih1 = weak d1 in 
+  	        let ih2 = weak d2 in 
+                let d1' = exc1 ih1 in 
+                 beta d1' ih2 
+| lm d' => let ih = weak d' in 
+           let d'' = exc1 ih in
+           lm d''
+| ap d1 d2 => let ih1 = weak d1 in
+              let ih2 = weak d2 in
+              ap ih1 ih2
+;
+
+rec subst : (g:ctx) pred [g, y:term |- M[..,y]] [g, y:term |- M'[..,y]] ->
+                     pred [g |- N] [g |- N']
+                     -> pred [g |- M[..,N]] [g |- M'[..,N']] =
+%/ total d (subst _ _ _ _ _ d _) /
+fn d => fn s => case d of
+  | var (vp [_, y:term |- #q] )
+        => (case [_, y:term |- #q] of
+         | [_, y:term |- y] => s
+         | [_, y:term |- #q[..]] => var (vp _))
+| beta d1 d2 => let ih2 = subst d2 s in
+                let s2 = weak s in
+                let ih1 = subst (exc1 d1) s2 in
+                beta ih1 ih2
+| lm d' =>  let s2 = weak s in
+            let ih = subst (exc1 d') s2 in lm ih
+| ap d1 d2 => let ih1 = subst d1 s in
+              let ih2 = subst d2 s in
+              ap ih1 ih2
+;
+
+

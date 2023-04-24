@@ -1,0 +1,16 @@
+%Church-Rosser property for beta reduction
+
+inductive cr_beta_conc : (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| cr_beta_res : mstep [g |- M1] [g |- N] -> mstep [g |- M2] [g |- N]
+  -> cr_beta_conc [_ |- M1] [_ |- M2]
+;
+
+rec cr_beta : (g:ctx) mstep [g |- M] [g |- M1] ->  mstep [g |- M] [g |- M2] -> cr_beta_conc [g |- M1] [g |- M2] =
+fn d => fn s =>
+        let d' = mbeta_to_mpar d in
+        let s' = mbeta_to_mpar s in
+        let conf_result h1' h2' = conf d' s' in
+        let h1'' = mpar_to_mbeta h1' in
+        let h2'' = mpar_to_mbeta h2' in
+        cr_beta_res h1'' h2''
+;

@@ -1,0 +1,36 @@
+LF conf_ord_prop : term -> term -> type =
+| conf_ord_result : multi_beta_red M' N -> multi_beta_red M'' N
+		-> conf_ord_prop M' M'';
+
+rec confluence : (g:rctx) [g |- multi_beta_red M M'] 
+                -> [g |- multi_beta_red M M''] 
+				-> [g |- conf_ord_prop M' M''] =
+/ total d (confluence _ _ _ _ d _) /
+fn d => fn s => let [g |- D] = mbeta_to_mpar d in
+	let [g |- S] = mbeta_to_mpar s in
+	let [g |- conf_result H1 H2] = conf [g |- D] [g |- S] in
+	let [g |- H1'] = mpar_to_mbeta [g |- H1] in
+	let [g |- H2'] = mpar_to_mbeta [g |- H2] in
+	[g |- conf_ord_result H1' H2']
+;
+
+
+LF confl_prop_beta : term -> term -> type =
+| confl_result_beta : beta_red* M1 N -> beta_red* M2 N -> confl_prop_beta M1 M2
+;
+
+rec beta_confluence : (g:ctx) [g |- beta_red* M M1] -> [g |- beta_red* M M2]
+                     -> [g |- confl_prop_beta M1 M2] =
+/ total d (beta_confluence _ _ _ _ d s) /
+fn d => fn s => let [g |- D] = star_multi d in 
+				let [g |- S] = star_multi s in 
+				let [g |- conf_ord_result H1 H2] = confluence [g |- D] [g |- S] in
+				let [g |- H1'] = multi_star [g |- H1] in
+				let [g |- H2'] = multi_star [g |- H2] in
+				[g |- confl_result_beta H1' H2']
+;
+
+
+
+
+

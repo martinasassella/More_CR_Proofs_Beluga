@@ -1,0 +1,41 @@
+--coverage
+%Substitution lemma
+rec subst : (g:pctx){M : [g, x: tm A |- tm B[..]]}{N : [g |- tm A]}
+                    [g, x:tm A, u:pred x x |- pred M[..,x] M'[..,x]] -> [g |- pred N N']
+                    -> [g |- pred M[..,N] M'[..,N']] =
+%/ total d (subst _ _ _ _ _ _ _ d _) /
+mlam M => mlam N => fn d => fn s => case d of
+| [g, x:tm A, u:pred x x |- u] => s
+| [g, x:tm A, u:pred x x |- #p.2[..]] => [g |- #p.2]
+| [g, x:tm A, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] :
+  [g, x : tm A, u : pred x x |- pred (abs (\x1. M1[.., x, x1])) (abs (\x1. M'1[.., x, x1]))] => 
+              let [g |- S] = s in 
+              let [g, b:block(y:tm _, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst _ _ [g, b:block(y:tm _, v: pred y y), x:tm A[..], u:pred x x |- D[..,b.1,b.2,x,u]] 
+              [g,b |- S[..]] in 
+              [g |- lm \x.\u.IH[..,x,u]]
+| [g, x:tm A, u:pred x x |- beta (\y.\v.D1[..,y,v,x,u]) D2] => 
+              let [g |- S] = s in
+              let [g |- D2'] = subst _ _ [g,x:tm _,u |- D2] s in
+              let [g, b:block(y:tm _, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst _ _ [g, b:block(y:tm _, v: pred y y), x:tm A[..], u:pred x x |- D1[..,b.1,b.2,x,u]] 
+              [g,b |- S[..]] in
+              [g |- beta (\y.\v.IH[..,y,v]) D2']
+| [g, x:tm A, u:pred x x |- ap D1 D2] => 
+                      let [g |- IH1] = subst _ _ [g,x,u |- D1] s in
+                      let [g |- IH2] = subst _ _ [g,x,u |- D2] s in
+                      [g |- ap IH1 IH2]
+| [g, x:tm A, u:pred x x |- tap D] => 
+                      let [g |- IH] = subst _ _ [g,x,u |- D] s in 
+                      [g |- tap IH]                   
+| [g, x:tm A, u:pred x x |- tlm \a.D] => 
+                      let [g |- S] = s in
+                      let [g, a:ty |- IH] = subst _ _ [g,a:ty,x:tm A[..],u:pred x x |- D[..,x,u,a]] 
+                      [g,a:ty |- S[..]] in 
+                      [g |- tlm \a.IH]
+| [g, x:tm A, u:pred x x |- tbeta \a.D] => 
+                      let [g |- S] = s in 
+                      let [g, a:ty |- IH] = 
+                      subst _ _ [g,a:ty,x:tm A[..],u:pred x x |- D[..,x,u,a]] [g,a:ty |- S[..]] in 
+                      [g |- tbeta \a.IH]
+;

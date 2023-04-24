@@ -1,0 +1,38 @@
+%schema ctx = term;
+
+%Transitivity of mstep
+rec trans_mstep : (g:ctx) mstep [g |- M] [g |- M'] -> mstep [g |- M'] [g |- M''] -> mstep [g |- M] [g |- M''] =
+/ total d (trans_mstep _ _ _ d _) /
+fn d => fn s => case d of
+| id1 => s
+| step1 d1 d2 => (case s of
+                       | id1 => d
+                       | step1 d'1 d'2 => let ih = trans_mstep d2 s in
+                         step1 d1 ih)
+;
+
+%mstep is a congruence
+rec lm1* : (g:ctx) mstep [g, x:term |- M] [g, x:term |- M']
+      ->  mstep [g |- lam \x.M] [g |- lam \x.M'] =
+/ total d (lm1* _ _ _ d) /
+fn d => case d of
+| id1 => id1
+| step1 d1 d2 => let ih = lm1* d2 in
+                 step1 (lm1 d1) ih
+;
+
+rec apl1* :  (g:ctx) {M2:[g |- term]}mstep [g |- M1] [g |- M1'] -> mstep [g |- app M1 M2] [g |- app M1' M2] =
+/ total s (apl1* _ _ _ s) /
+mlam M2 => fn s => case s of
+| id1 => id1
+| step1 s1 s2 => let ih = apl1* [_ |- M2] s2 in
+                 step1 (apl1 s1) ih
+;
+
+rec apr1* : (g:ctx){M1:[g |- term]} mstep [g |- M2] [g |- M2'] -> mstep [g |- app M1 M2] [g |- app M1 M2'] =
+/ total s (apr1* _ _ _ s) /
+mlam M1 => fn s => case s of
+| id1 => id1
+| step1 s1 s2 => let ih = apr1* [_ |- M1] s2 in
+                 step1 (apr1 s1) ih
+;

@@ -1,0 +1,54 @@
+%Untyped lambda terms
+LF term : type =
+| lam : (term -> term) -> term
+| app : term -> term -> term
+;
+
+schema ctx = term;
+
+%Equality for terms
+inductive eq : (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| refl : eq [g |- M] [g |- M]
+;
+
+%The term M is a variable
+inductive isVar : (g : ctx) {M: [g ⊢ term]} ctype =
+  | vp: {#q: [g |- term]} isVar [g |- #q]
+;
+
+%The term M is equal to a variable
+inductive exVar : (g:ctx) {M:[g ⊢ term]} ctype =
+  | exV : {#p:[g ⊢ term]} eq [g ⊢ #p] [g ⊢ M] → exVar [g ⊢ M] ;
+
+%If a term is a variable then it is equal to a variable
+rec is_var : isVar [g ⊢ M] → exVar [g ⊢ M] =
+fn v ⇒ let vp [g |- #p] = v in
+       exV _ refl
+; 
+
+%Weakening for isVar
+rec vn : isVar [g |- M] -> isVar [g, x:term |- M[..]] =
+/ total v (vn _ _ v) /
+fn v => let vp [g |- #p] = v in 
+        vp [g, x:term |- #p[..]]
+;
+
+
+%Parallel reduction
+inductive pred : (g:ctx) [g|- term] -> [g|- term] -> ctype =
+| var : isVar [g ⊢ M] 
+	  → pred [g |- M] [g |- M]
+| beta : pred [g, x:term |- M1[..,x]] [g, x:term |- M1'[..,x]] -> pred [g |- M2] [g |- M2']
+         -> pred [g |- app (lam \x.M1[..,x]) M2] [g |- M1'[..,M2']]
+| lm : pred [g, x:term |- M[..,x]] [g, x:term |- M'[..,x]]
+       -> pred [g |- lam \x.M[..,x]] [g |- lam \x.M'[..,x]]
+| ap : pred [g |- M1] [g |- M1'] -> pred [g |- M2] [g |- M2']
+       -> pred [g |- app M1 M2] [g |- app M1' M2']
+;
+
+%Multi step parallel reduction
+inductive mstep_pred : (g:ctx) [g|- term] -> [g|- term] -> ctype =
+| id : mstep_pred [g |- M] [g |- M]
+| step : pred [g |- M] [g |- M'] -> mstep_pred [g |- M'] [g |- M'']
+          -> mstep_pred [g |- M] [g |- M'']
+;

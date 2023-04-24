@@ -1,0 +1,16 @@
+%Church-Rosser property for beta reduction in L2
+
+LF cr_conc : tm A -> tm A -> type =
+| cr_res : mstep M1 N -> mstep M2 N -> cr_conc M1 M2
+;
+
+rec cr_beta : (g:cxt) {M : [g |- tm A]} [g |- mstep M M1] -> [g |- mstep M M2] -> [g |- cr_conc M1 M2] =
+/ total s (cr_beta _ _ _ _ _ d s) /
+mlam M => fn d => fn s => 
+        let [g |- D1] = mbeta_to_mpar _ d in
+        let [g |- S1] = mbeta_to_mpar _ s in 
+        let [g |- conf_res H1' H2'] = conf _ [g |- D1] [g |- S1] in 
+        let [g |- H1] = mpar_to_mbeta _ [g |- H1'] in
+        let [g |- H2] = mpar_to_mbeta _ [g |- H2'] in
+        [g |- cr_res H1 H2]
+;

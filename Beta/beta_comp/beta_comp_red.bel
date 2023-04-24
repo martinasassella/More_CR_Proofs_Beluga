@@ -1,0 +1,15 @@
+%Ordinary beta reduction relation
+inductive step : (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| beta1 : step [g |- app (lam \x.M1[..,x]) M2] [g |- M1[..,M2]]
+| lm1   : step [g, x:term |- M[..,x]] [g, x:term |- M'[..,x]]
+          -> step [g |- lam \x.M[..,x]] [g |- lam \x.M'[..,x]]
+| apl1  : step [g |- M1] [g |- M1'] -> step [g |- app M1 M2] [g |- app M1' M2]
+| apr1  : step [g |- M2] [g |- M2'] -> step [g |- app M1 M2] [g |- app M1 M2']
+;
+
+%Multistep reduction
+inductive mstep : (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| id1 : mstep [g |- M] [g |- M]
+| step1 : step [g |- M] [g |- M'] -> mstep [g |- M'] [g |- M'']
+          -> mstep [g |- M] [g |- M'']
+;

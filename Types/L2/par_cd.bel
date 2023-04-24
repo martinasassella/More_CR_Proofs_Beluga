@@ -1,0 +1,59 @@
+%Parallel reduction for system F
+LF pred : tm A -> tm A -> type =
+| lm : ({x:tm A} pred x x -> pred (M x) (M' x))
+       -> pred (abs M) (abs M')
+| ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2')
+| tlm : ({X:ty} pred (M X) (M' X))
+       -> pred (tlam M) (tlam M')
+| tap : pred M M'
+		-> pred (tapp M A) (tapp M' A)
+| beta : ({x:tm A} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (abs M1) M2) (M1' M2')
+| tbeta : ({X:ty} pred (M1 X) (M1' X))
+		 -> pred (tapp (tlam M1) A) (M1' A)
+;
+
+LF mstep_pred : tm A -> tm A -> type =
+   | p-refl :  mstep_pred M M
+   | p-step : pred M N -> mstep_pred N M' -> mstep_pred M M'
+;
+
+
+
+
+%Not abstraction over terms judgement
+LF notabs : tm A -> type =
+| nl_app : notabs (app _ _)
+| nl_tlam : notabs (tlam _)
+| nl_tapp : notabs (tapp _ _)
+;
+
+%Not abstraction over types judgement
+LF nottlam : tm A -> type =
+| ntl_abs : nottlam (abs _)
+| ntl_app : nottlam (app _ _)
+| ntl_tapp : nottlam (tapp _ _)
+;
+
+%schema nctx = some [a:ty] block(x:tm a, v: notabs x) + ty;
+
+%Complete development
+LF cd : tm A -> tm A -> type =
+| cd_lm : ({x:tm A} notabs x -> cd x x -> cd (M x) (M' x))
+          -> cd (abs M) (abs M')
+| cd_ap : notabs M1 -> cd M1 M1' -> cd M2 M2'
+          -> cd (app M1 M2) (app M1' M2')
+| cd_tlm : ({X:ty} cd (M X) (M' X))
+		  -> cd (tlam M) (tlam M')
+| cd_tap : nottlam M1 -> cd M1 M1'
+          -> cd (tapp M1 A) (tapp M1' A)
+| cd_beta : ({x:tm A} notabs x -> cd x x -> cd (M x) (M' x)) -> cd N N'
+            -> cd (app (abs M) N) (M' N')
+| cd_tbeta : ({X:ty} cd (M X) (M' X))
+			 -> cd (tapp (tlam M) A) (M' A)
+;
+
+schema pctx = some [a:ty] block(x:tm a, v:pred x x) + ty;
+schema cctx = some [a:ty] block(x:tm a, u: notabs x, v: cd x x) + ty;
+schema pcctx = some [a:ty] block(x:tm a, w: pred x x, u: notabs x, v: cd x x) + ty;

@@ -1,0 +1,22 @@
+%Substitution lemma
+rec subst : (g:pctx)[g, x:term, u:pred x x |- pred M[..,x] M'[..,x]] -> [g |- pred N N'] -> [g |- pred M[..,N] M'[..,N']] =
+%/ total {d s} (subst _ _ _ _ _ d s) /
+fn d => fn s => case d of
+| [g, x:term, u:pred x x |- u] => s
+| [g, x:term, u:pred x x |- #p.2[..]] => [g |- #p.2]
+| [g, x:term, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] =>
+              let [g |- S] = s in
+              let [g, b:block(y:term, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst [g, b:block(y:term, v: pred y y), x:term, u:pred x x |- D[..,b.1,b.2,x,u]] [g,b |- S[..]] in
+              [g |- lm \x.\u.IH[..,x,u]]
+| [g, x:term, u:pred x x |- beta (\y.\v.D1[..,y,v,x,u]) D2] =>
+              let [g |- S] = s in
+              let [g |- D2'] = subst [g,x,u |- D2] s in
+              let [g, b:block(y:term, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst [g, b:block(y:term, v: pred y y), x:term, u:pred x x |- D1[..,b.1,b.2,x,u]] [g,b |- S[..]] in
+              [g |- beta (\y.\v.IH[..,y,v]) D2']
+| [g, x:term, u:pred x x |- ap D1 D2] =>
+                      let [g |- IH1] = subst [g,x,u |- D1] s in
+                      let [g |- IH2] = subst [g,x,u |- D2] s in
+                      [g |- ap IH1 IH2]
+;

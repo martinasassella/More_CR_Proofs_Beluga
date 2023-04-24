@@ -1,0 +1,63 @@
+%Diamond property lemma
+inductive dia_prop: (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| dia_result: pred [g |- M'] [g |- N] -> pred [g |- M''] [g |- N] -> dia_prop [g |- M'] [g |- M'']
+;
+rec dia : (g:ctx) pred [g |- M] [g |- M1] -> pred [g |- M] [g |- M2]
+          -> dia_prop [g |- M1] [g |- M2] =
+/ total {d s} (dia _ _ _ _ d s) /
+fn d => fn s => case d of
+| var d' => let exV [g ⊢ #p] refl = is_var d' in 
+            let var s' = s in 
+            dia_result (var d') (var s')
+| ap d1 d2 =>
+    (case s of
+    | var s' => let exV [g |- #p] e = is_var s' in 
+                impossible e
+    | ap s1 s2 =>
+            let (dia_result h1 h2) = dia d1 s1 in
+            let (dia_result h1' h2') = dia d2 s2 in
+            dia_result (ap h1 h1') (ap h2 h2')
+    | beta s1 s2 => 
+            (case d1 of
+            | lm r1 => 
+                let (dia_result t2 t2') = dia d2 s2 in
+                    let (dia_result t1 t1') = dia r1 s1 in
+                    let s'' = subst t1' t2' in
+                    dia_result (beta t1 t2) s''
+            | var r1 => let exV [g |- #p] e = is_var r1 in 
+                        impossible e
+            )
+                    
+      )
+| lm d' =>
+    (case s of
+    | var s' => let exV [g |- #p] e = is_var s' in 
+                impossible e
+    | lm d'' => 
+        let (dia_result ih1 ih1') = dia d' d'' in
+        dia_result (lm ih1) (lm ih1')
+    )
+    
+
+| beta d1 d2 =>
+    (case s of
+    | var s' => let exV [g |- #p] e = is_var s' in 
+                impossible e
+    | ap s1 s2 =>
+            (case s1 of
+            | var s1' => let exV [g |- #p] e = is_var s1' in 
+                impossible e
+            | lm s1' => 
+                let (dia_result ih1 ih1') = dia d1 s1' in
+                let (dia_result ih2 ih2') = dia d2 s2 in
+                let s = subst ih1 ih2 in
+                dia_result s (beta ih1' ih2')
+            )
+    | beta s1 s2 =>
+                let (dia_result ih2 ih2') = dia d2 s2 in
+                let (dia_result ih1 ih1') = dia d1 s1 in
+                let s = subst ih1 ih2 in
+                let s' = subst ih1' ih2' in
+                dia_result s s'
+    )
+;

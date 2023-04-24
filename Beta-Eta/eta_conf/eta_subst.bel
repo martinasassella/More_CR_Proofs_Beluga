@@ -1,0 +1,40 @@
+%Ordinary eta reduction is substitution closed
+rec subst_eta_closed : (g:ctx) {N : [g |- term]} [g, x:term |- eta_red M[..,x] M'[..,x]] -> [g |- eta_red M[..,N] M'[..,N]] =
+/ total d (subst_eta_closed _ _ _ _ d) /
+mlam N => fn d => case d of
+| [g, x:term |- eta] => [g |- eta]
+| [g, x:term |- cong_lam \y.D'[..,y,x]] =>
+                  let [g, x:term|- IH[..,x]] = subst_eta_closed [g, x:term |- N[..]] [g, x:term, y:term |- D'[..,x,y]] in
+                  [g |- cong_lam \x.IH[..,x]]
+| [g, x:term |- cong_app1 D1[..,x]] => let [g |- IH] = subst_eta_closed [g |- N] [g, x:term |- D1[..,x]] in
+                                       [g |- cong_app1 IH]
+| [g, x:term |- cong_app2 D2[..,x]] => let [g |- IH] = subst_eta_closed [g |- N] [g, x:term |- D2[..,x]] in
+                                       [g |- cong_app2 IH]
+;
+
+rec lemma_eta_app : (g:ctx)[g |- eta_red* M M'] -> [g |- eta_red* N N'] -> [g |- eta_red* (app M N) (app M' N')] =
+/ total d (lemma_eta_app _ _ _ _ _ d _) /
+fn d => fn s => let [g |- D] : [g |- eta_red* M M'] = d in
+                let [g |- S] : [g |- eta_red* N N'] = s in
+                let [g |- D'] = cong_app1* [g |- N] [g |- D] in
+                let [g |- S'] = cong_app2* [g |- M'] [g |- S] in
+                [g |- tr_e* D' S']
+;
+
+
+rec subst_eta : {g:ctx} {M : [g,x:term |- term]} [g |- eta_red M1 M2] -> [g |- eta_red* M[..,M1] M[..,M2]] =
+/ total m (subst_eta _ m _ _ _) /
+mlam g => mlam M => fn d =>
+    case [g,x:term |- M] of
+    | [g,x:term |- x] => let [g |- D] = d in [g |- cl_e* D]
+    | [g, x:term |- #p[..]] => [g |- id_e*]
+    | [g,x:term |- lam \y.M'[..,x,y]] =>
+        let [g |- D] = d in
+        let [g,x:term |- H[..,x]] =
+        subst_eta [g,x:term] [g,x:term,y:term |- M'[..,y,x]] [g,x:term |- D[..]] in
+        cong_lam* [g,x:term |- H[..,x]]
+    | [g,x:term |- app M1' M2'] =>
+          let [g |- H1] = subst_eta [g] [g, x:term |- M1'] d in
+          let [g |- H2] = subst_eta [g] [g, x:term |- M2'] d in
+          lemma_eta_app [g |- H1] [g |- H2]
+;

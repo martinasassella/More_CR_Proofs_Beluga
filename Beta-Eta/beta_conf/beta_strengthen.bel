@@ -1,0 +1,26 @@
+inductive exStrBetaRed : (g:ctx) [g,x:term |- beta_red M[..] N] -> ctype =
+| exStrBeta : {D : [g,x:term |- beta_red M[..] N]}
+             [g |- beta_red M N'] -> [g,x:term |- eq N'[..] N]
+             -> exStrBetaRed [g,x:term |- D]
+;
+
+rec strengthen_beta : {g : ctx} {D : [g, x:term |- beta_red M[..] N]} -> exStrBetaRed [g, x:term |- D] =
+ %/ total d (strengthen_beta _ _ _ d) /
+ mlam g => mlam D => case [g, x:term |- D] of
+ | [g,x:term |- beta1] => exStrBeta [g, x:term |- D[..]] [g |- beta1] [g,x:term |- refl]
+ | [g,x:term |- lm1 \y.D'[..,x,y]] =>
+            let exStrBeta [g,x:term,y:term |- D'[..,x,y]] [g,x:term |- H1] e =
+            strengthen_beta [g,x:term] [g,x:term,y:term |- D'[..,y,x]] in
+            let [g,x:term,y:term |- refl] = e in
+            exStrBeta [g, x:term |- D] [g |- lm1 \x.H1[..,x]] [g,x:term |- refl]
+ | [g, x:term |- apl1 D1] =>
+            let exStrBeta [g,x:term |- D1[..,x]] [g |- H1] e =
+            strengthen_beta [g] [g,x:term |- D1[..,x]] in
+            let [g,x:term |- refl] = e in
+            exStrBeta [g, x:term ⊢ D] [g ⊢ apl1 H1] [g,x:term |- refl]
+ | [g, x:term |- apr1 D2] =>
+            let exStrBeta [g,x:term |- D2[..,x]] [g |- H2] e =
+            strengthen_beta [g] [g,x:term |- D2[..,x]] in
+            let [g,x:term |- refl] = e in
+            exStrBeta [g, x:term ⊢ D] [g ⊢ apr1 H2] [g,x:term |- refl]
+ ;

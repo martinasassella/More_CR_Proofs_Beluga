@@ -1,0 +1,190 @@
+%Preliminary lemma
+rec etaeq_etastar : (g:ctx) [g |- eta_red= M N] -> [g |- eta_red* M N] =
+/ total d (etaeq_etastar _ _ _ d) /
+fn d => case d of
+| [g |- id_e=] => [g |- id_e*]
+| [g |- cl_e= D] => [g |- cl_e* D]
+;
+
+%Lemma 3) (square R S T R=) & (S c T) -> square R= S T R=
+%In particular, we need: 3) square eta eta eta* eta= -> square eta= eta eta* eta=
+%LF three_prem: term -> term -> type =
+%| three_sq : eta_red* M1 N -> eta_red= M2 N -> three_prem M1 M2;
+
+LF three_conc : term -> term -> type =
+| three_result : eta_red* M1 N -> eta_red= M2 N -> three_conc M1 M2
+;
+
+rec lemma_three : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red M M1] -> [g |- eta_red M M2]
+                      %-> [g |- three_prem M1 M2])
+                      -> [g |- eta_square M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red= M' M1'] -> [g |- eta_red M' M2'] -> [g |- three_conc M1' M2']) =
+/ total s (lemma_three _ _ _ _ _ s _) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+case s of
+      | [g |- id_e=] => let [g |- T] = t in
+                      [g |- three_result (cl_e* T) id_e=]
+      | [g |- cl_e= S] : [g |- eta_red= M' M1'] => let [g |- T] : [g |- eta_red M' M2'] = t in
+                      let [g |- D] = d [g |- M'] [g |- M1'] [g |- M2'] [g |- S] [g |- T] in
+                      let [g |- eta_square_result H1 H2] = [g |- D] in
+                      let [g |- H1'] = etaeq_etastar [g |- H1] in
+                      [g |- three_result H1' H2]
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Lemma 1) : square R S T U -> square S R U T
+%We use it twice in the Commutation Lemma's proof:
+
+%1.1) square eta eta= eta* eta= -> square eta eta= eta= eta
+
+%LF one_first_prem: term -> term -> type =
+%| one_first_sq : eta_red* M1 N -> eta_red= M2 N -> one_first_prem M1 M2;
+
+LF one_first_conc : term -> term -> type =
+| one_first_result : eta_red= M1 N -> eta_red* M2 N -> one_first_conc M1 M2
+;
+
+rec lemma_one_first : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red= M M1] -> [g |- eta_red M M2]
+                      %-> [g |- one_first_prem M1 M2])
+                      -> [g |- three_conc M1 M2])
+                       -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                       [g |- eta_red M' M1'] -> [g |- eta_red= M' M2'] -> [g |- one_first_conc M1' M2']) =
+/ total t (lemma_one_first _ _ _ _ _ _ t) /
+
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+    let [g |- three_result H1 H2] = d _ _ _ t s in
+    [g |- one_first_result H2 H1]
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Lemma 4) : square R S S T -> square R* S S T*
+%We use it twice in the Commutation Lemma's proof:
+
+%4.1) square eta eta= eta= eta -> square eta* eta= eta= eta*
+%LF four_first_prem: term -> term -> type =
+%| four_first_sq : eta_red= M1 N -> eta_red M2 N -> four_first_prem M1 M2;
+
+LF four_first_conc : term -> term -> type =
+| four_first_result : eta_red= M1 N -> eta_red* M2 N -> four_first_conc M1 M2
+;
+
+rec lemma_four_first : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red M M1] -> [g |- eta_red= M M2]
+                      %-> [g |- four_first_prem M1 M2])
+                      -> [g |- one_first_conc M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red* M' M1'] -> [g |- eta_red= M' M2'] -> [g |- four_first_conc M1' M2']) =
+/ total s (lemma_four_first _ _ _ _ _ s _) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+case t of
+| [g |- id_e=] => let [g |- S] = s in
+                [g |- four_first_result id_e= S]
+| [g |- cl_e= T] : [g |- eta_red= M' M2'] =>
+                (case s of
+                | [g |- id_e*] => [g |- four_first_result (cl_e= T) id_e*]
+                | [g |- cl_e* S'] : [g |- eta_red* M' M1'] =>
+                      let [g |- D] = d [g |- M'] [g |- M1'] [g |- M2'] [g |- S'] [g |- (cl_e= T)] in
+                      let [g |- one_first_result H1 H2] = [g |- D] in
+                      [g |- four_first_result H1 H2]
+                | [g |- tr_e* S1 S2] : [g |- eta_red* M' M1'] =>
+                      let [g |- S'] : [g |- eta_red* M' M] = [g |- S1] in
+                      let [g |- IH1] = lemma_four_first d [g |- M'] [g |- M] [g |- M2'] [g |- S'] t in
+                      let [g |- four_first_result H1 H2] = [g |- IH1] in
+                      let [g |- IH2] = lemma_four_first d _ [g |- M1'] _ [g |- S2] [g |- H1] in
+                      let [g |- four_first_result H1' H2'] = [g |- IH2] in
+                      [g |- four_first_result H1' (tr_e* H2 H2')]
+                )
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%1.2) square eta* eta= eta= eta* -> square eta= eta* eta* eta=
+%LF one_second_prem: term -> term -> type =
+%| one_second_sq : eta_red= M1 N -> eta_red* M2 N -> one_second_prem M1 M2;
+
+LF one_second_conc : term -> term -> type =
+| one_second_result : eta_red* M1 N -> eta_red= M2 N -> one_second_conc M1 M2
+;
+
+rec lemma_one_second : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red* M M1] -> [g |- eta_red= M M2]
+                      %-> [g |- one_second_prem M1 M2])
+                      -> [g |- four_first_conc M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red= M' M1'] -> [g |- eta_red* M' M2'] -> [g |- one_second_conc M1' M2']) =
+/ total s (lemma_one_second _ _ _ _ _ s _) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+    let [g |- four_first_result IH1 IH2] = d _ _ _ t s in
+    [g |- one_second_result IH2 IH1]
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%4.2) square eta= eta* eta* eta= -> square eta* eta* eta* eta*
+%LF four_second_prem: term -> term -> type =
+%| four_second_sq : eta_red* M1 N -> eta_red= M2 N -> four_second_prem M1 M2;
+
+LF commute_eta : term -> term -> type =
+| commute_eta_result : eta_red* M1 N -> eta_red* M2 N -> commute_eta M1 M2
+;
+
+rec lemma_four_second : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red= M M1] -> [g |- eta_red* M M2]
+                      %-> [g |- four_second_prem M1 M2])
+                      -> [g |- one_second_conc M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red* M' M1'] -> [g |- eta_red* M' M2'] -> [g |- commute_eta M1' M2']) =
+/ total s (lemma_four_second _ _ _ _ _ s _) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t => case s of
+| [g |- id_e*] => let [g |- T] = t in [g |- commute_eta_result T id_e*]
+| [g |- cl_e* S] => let [g |- one_second_result H1 H2] = d _ _ _ [g |- (cl_e= S)] t in
+                  let [g |- H2'] = etaeq_etastar [g |- H2] in
+                  [g |- commute_eta_result H1 H2']
+| [g |- tr_e* S1 S2] => let [g |- commute_eta_result IH1' IH2'] = lemma_four_second d _ _ _ [g |- S1] t in
+                      let [g |- commute_eta_result IH1'' IH2''] = lemma_four_second d _ _ _ [g |- S2] [g |- IH1'] in
+                      [g |- commute_eta_result IH1'' (tr_e* IH2' IH2'')]
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Lemma 2) (square R S T U) & (T c T') -> square R S T' U
+%We use it to conclude the confluence proof together with the Commutation Lemma and the square property of eta
+%In particular, we need: 2) square eta eta eta= eta= -> square eta eta eta* eta=
+LF two_prem: term -> term -> type =
+| two_sq : eta_red= M1 N -> eta_red= M2 N -> two_prem M1 M2;
+
+LF two_conc : term -> term -> type =
+| two_result : eta_red* M1 N -> eta_red= M2 N -> two_conc M1 M2
+;
+
+rec lemma_two : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red M M1] -> [g |- eta_red M M2] -> [g |- two_prem M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red M' M1'] -> [g |- eta_red M' M2'] -> [g |- two_conc M1' M2']) =
+/ total s (lemma_two _ _ _ _ _ s _) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+    let [g |- two_sq IH1 IH2] = d _ _ _ s t in
+    let [g |- IH1'] = etaeq_etastar [g |- IH1] in
+    [g |- two_result IH1' IH2]
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%COMMUTATION LEMMA
+%square R S S* R= -> square  R* S* S* R*
+%We use it to prove confluence CL) square eta eta eta* eta= -> square eta* eta* eta* eta*
+
+rec commutation_lemma_eta : (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+                      [g |- eta_red M M1] -> [g |- eta_red M M2]
+                      %-> [g |- three_prem M1 M2]
+                      -> [g |- eta_square M1 M2])
+                      -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                      [g |- eta_red* M' M1'] -> [g |- eta_red* M' M2'] -> [g |- commute_eta M1' M2']) =
+/ total s (commutation_lemma_eta _ _ _ _ _ s _) /
+fn d => lemma_four_second (lemma_one_second (lemma_four_first (lemma_one_first (lemma_three d))))
+;

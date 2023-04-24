@@ -1,0 +1,81 @@
+LF dia_un_prop : term -> term -> type =
+| dia_un_res : union_b*e* M' N -> union_b*e* M'' N -> dia_un_prop M' M''
+;
+
+rec dia_un : (g:ctx) [g |- union_b*e* M M'] -> [g |- union_b*e* M M'']
+			 -> [g |- dia_un_prop M' M''] =
+/ total d (dia_un _ _ _ _ d s) /
+fn d => fn s => case d of
+| [g |- eta* D] => 
+		(case s of
+		| [g |- eta* S] => 
+				let [g |- confl_result H1 H2] = eta_confluence [g |- D] [g |- S] in 
+				[g |- dia_un_res (eta* H1) (eta* H2)]
+		| [g |- beta* S] => 
+				let [g |- commute_result H1 H2] = commutation_lemma be_square _ _ _ [g |- S] [g |- D] in 
+				[g |- dia_un_res (beta* H2) (eta* H1)]
+		)
+| [g |- beta* D] => 
+		(case s of
+		| [g |- eta* S] => 
+				let [g |- commute_result H1 H2] = commutation_lemma be_square _ _ _ [g |- D] [g |- S] in 
+				[g |- dia_un_res (eta* H1) (beta* H2)]
+		| [g |- beta* S] => 
+				let [g |- confl_result_beta H1 H2] = beta_confluence [g |- D] [g |- S] in 
+				[g |- dia_un_res (beta* H1) (beta* H2)]
+		)
+;
+
+LF strip_un_prop: term -> term -> type =
+| strip_un_result: beta*_eta* M' N -> union_b*e* M'' N
+                -> strip_un_prop M' M'';
+rec strip_un : (g:rctx)[g |- union_b*e* M M'] -> [g |- beta*_eta* M M'']
+                -> [g |- strip_un_prop M' M''] =
+/ total s (strip_un g m m' m'' r s) /
+fn r => fn s => case s of
+| [g |- cl_b*e* S] => 
+		let [g |- dia_un_res H1 H2] = dia_un r [g |- S] in 
+		[g |- strip_un_result (cl_b*e* H1) H2]
+| [g |- tr_b*e* S1 S2] => 
+		let [g |- strip_un_result H1 H2] = strip_un r [g |- S1] in 
+		let [g |- strip_un_result H1' H2'] = strip_un [g |- H2] [g |- S2] in 
+		[g |- strip_un_result (tr_b*e* H1 H1') H2']
+;
+
+
+
+LF conf_un_prop : term -> term -> type =
+| conf_un_res : beta*_eta* M' N -> beta*_eta* M'' N -> conf_un_prop M' M''
+;
+
+rec conf_un : (g:ctx) [g |- beta*_eta* M M'] -> [g |- beta*_eta* M M'']
+			 -> [g |- conf_un_prop M' M''] =
+/ total {d s} (conf_un _ _ _ _ d s) /
+fn d => fn s => case d of
+| [g |- cl_b*e* D] => 
+		let [g |- strip_un_result H1 H2] = strip_un [g |- D] s in 
+		[g |- conf_un_res H1 (cl_b*e* H2)]
+| [g |- tr_b*e* D1 D2] => 
+		let [g |- conf_un_res H1 H2] = conf_un [g |- D1] s in 
+		let [g |- conf_un_res H1' H2'] = conf_un [g |- D2] [g |- H1] in 
+		[g |- conf_un_res H1' (tr_b*e* H2 H2')]
+;
+
+LF conf_beta_eta : term -> term -> type =
+| conf_be_result : beta_eta* M1 N -> beta_eta* M2 N -> conf_beta_eta M1 M2
+;
+
+
+rec eta_beta_confluence : (g:ctx) [g |- beta_eta* M M1] -> [g |- beta_eta* M M2]
+                     -> [g |- conf_beta_eta M1 M2] =
+/ total d (eta_beta_confluence _ _ _ _ d _ ) /
+fn d => fn s => 
+	let [g |- H1] = be1_to_be2 d in
+	let [g |- H2] = be1_to_be2 s in 
+	let [g |- conf_un_res H1' H2'] = conf_un [g |- H1] [g |- H2] in 
+	let [g |- H1''] = be2_to_be1 [g |- H1'] in
+	let [g |- H2''] = be2_to_be1 [g |- H2'] in
+	[g |- conf_be_result H1'' H2'']
+;
+
+

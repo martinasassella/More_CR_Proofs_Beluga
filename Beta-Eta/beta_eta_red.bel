@@ -1,0 +1,94 @@
+%Beta-eta reduction
+LF beta_eta : term -> term -> type =
+| beta_be : beta_red M M' -> beta_eta M M'
+| eta_be : eta_red M M' -> beta_eta M M'
+;
+
+%Reflexive closure of beta_eta_red
+LF beta_eta= : term -> term -> type =
+| id_be= : beta_eta= M M
+| cl_be= : beta_eta M N -> beta_eta= M N
+;
+
+%Transitive-reflexive closure of beta_eta_red
+LF beta_eta* : term -> term -> type =
+| id_be* : beta_eta* M M
+| tr_be* : beta_eta* M1 M2 -> beta_eta* M2 M3
+        -> beta_eta* M1 M3
+| cl_be* : beta_eta M N -> beta_eta* M N
+;
+
+%Union between beta* and eta*
+LF union_b*e* : term -> term -> type =
+| eta* : eta_red* M1 M2 -> union_b*e* M1 M2
+| beta* : beta_red* M1 M2 -> union_b*e* M1 M2
+;
+
+%Transitive closure of the union between eta* and beta*
+LF beta*_eta* : term -> term -> type =
+| tr_b*e* : beta*_eta* M1 M2 -> beta*_eta* M2 M3
+            -> beta*_eta* M1 M3
+| cl_b*e* : union_b*e* M M' -> beta*_eta* M M'
+;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Equivalence (beta u eta)=*  =  (beta=* u eta=*)*
+
+rec be1_to_be2 : (g:ctx) [g |- beta_eta* M M'] -> [g |- beta*_eta* M M'] =
+/ total d (be1_to_be2 _ _ _ d) /
+fn d => case d of
+| [g |- id_be*] => [g |- cl_b*e* (eta* id_e*)]
+| [g |- tr_be* D1 D2] => let [g |- D1'] = be1_to_be2 [g |- D1] in
+                         let [g |- D2'] = be1_to_be2 [g |- D2] in
+                         [g |- tr_b*e* D1' D2']
+| [g |- cl_be* D] => (case [g |- D] of
+                     | [g |- beta_be D1] => [g |- cl_b*e* (beta* (cl_b* D1))]
+                     | [g |- eta_be D1] => [g |- cl_b*e* (eta* (cl_e* D1))]
+                     )
+;
+
+rec lemma_eta : (g:ctx) [g |- eta_red* M M'] -> [g |- beta_eta* M M'] =
+/ total d (lemma_eta _ _ _ d) /
+fn d => case d of
+    | [g |- id_e*] => [g |- id_be*]
+    | [g |- tr_e* D1 D2] => let [g |- IH1] = lemma_eta [g |- D1] in
+                            let [g |- IH2] = lemma_eta [g |- D2] in
+                            [g |- tr_be* IH1 IH2]
+    | [g |- cl_e* D] => [g |- cl_be* (eta_be D)]
+;
+
+rec lemma_beta : (g:ctx) [g |- beta_red* M M'] -> [g |- beta_eta* M M'] =
+/ total d (lemma_beta _ _ _ d) /
+fn d => case d of
+    | [g |- id_b*] => [g |- id_be*]
+    | [g |- tr_b* D1 D2] => let [g |- IH1] = lemma_beta [g |- D1] in
+                            let [g |- IH2] = lemma_beta [g |- D2] in
+                            [g |- tr_be* IH1 IH2]
+    | [g |- cl_b* D] => [g |- cl_be* (beta_be D)]
+;
+
+rec be2_to_be1 : (g:ctx) [g |- beta*_eta* M M'] -> [g |- beta_eta* M M'] =
+/ total d (be2_to_be1 _ _ _ d) /
+fn d => case d of
+| [g |- cl_b*e* D] => (case [g |- D] of
+                      | [g |- eta* D'] => (case [g |- D'] of
+                                          | [g |- id_e*] => [g |- id_be*]
+                                          | [g |- tr_e* D1 D2] =>
+                                                let [g |- H1] = lemma_eta [g |- D1] in
+                                                let [g |- H2] = lemma_eta [g |- D2] in
+                                                [g |- tr_be* H1 H2]
+                                          | [g |- cl_e* D''] => [g |- cl_be* (eta_be D'')]
+                                          )
+                      | [g |- beta* D'] => (case [g |- D'] of
+                                          | [g |- id_b*] => [g |- id_be*]
+                                          | [g |- tr_b* D1 D2] =>
+                                                let [g |- H1] = lemma_beta [g |- D1] in
+                                                let [g |- H2] = lemma_beta [g |- D2] in
+                                                [g |- tr_be* H1 H2]
+                                          | [g |- cl_b* D''] => [g |- cl_be* (beta_be D'')]
+                                          ))
+| [g |- tr_b*e* D1 D2] => let [g |- H1] = be2_to_be1 [g |- D1] in
+                          let [g |- H2] = be2_to_be1 [g |- D2] in
+                          [g |- tr_be* H1 H2]
+;

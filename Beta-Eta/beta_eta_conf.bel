@@ -1,0 +1,69 @@
+%HINDLEY-ROSEN
+
+LF dia_beta_eta : term -> term -> type =
+| dia_result : beta_eta* M1 N -> beta_eta* M2 N -> dia_beta_eta M1 M2
+;
+
+rec hindley_rosen: 
+    (g:ctx) ({M: [g |- term]}{M1: [g |- term]}{M2: [g |- term]}
+            [g |- beta_red* M M1] -> [g |- eta_red* M M2]
+            -> [g |- commute M1 M2])
+                -> ({M': [g |- term]}{M1': [g |- term]}{M2': [g |- term]}
+                [g |- beta_eta* M' M1'] -> [g |- beta_eta* M' M2']
+                -> [g |- dia_beta_eta M1' M2']) =
+/ total {s t} (hindley_rosen _ _ _ _ _ s t) /
+fn d => mlam M' => mlam M1' => mlam M2' => fn s => fn t =>
+    case s of
+    | [g |- id_be*] => let [g |- T] = t in [g |- dia_result T id_be*]
+    | [g |- tr_be* S1 S2] =>
+        let [g |- dia_result H1 H2] = hindley_rosen d _ _ _ [g |- S1] t in
+        let [g |- dia_result H1' H2'] = hindley_rosen d _ _ _ [g |- S2] [g |- H1] in
+        [g |- dia_result H1' (tr_be* H2 H2')]
+    | [g |- cl_be* S'] =>
+        (case t of
+        | [g |- id_be*] => [g |- dia_result id_be* (cl_be* S')]
+        | [g |- tr_be* T1 T2] =>
+            let [g |- dia_result H1 H2] = hindley_rosen d _ _ _ s [g |- T1] in
+            let [g |- dia_result H1' H2'] = hindley_rosen d _ _ _ [g |- H2] [g |- T2] in
+            [g |- dia_result (tr_be* H1 H1') H2']
+    | [g |- cl_be* T'] =>
+        (case [g |- S'] of
+        | [g |- beta_be S''] =>
+            (case [g |- T'] of
+            | [g |- beta_be T''] =>
+                let [g |- confl_result_beta H1 H2] =
+                beta_confluence [g |- cl_b* S''] [g |- cl_b* T''] in
+                let [g |- H1'] = be2_to_be1 [g |- cl_b*e* (beta* H1)] in
+                let [g |- H2'] = be2_to_be1 [g |- cl_b*e* (beta* H2)] in
+                [g |- dia_result H1' H2']
+            | [g |- eta_be T''] =>
+                let [g |- commute_result H1 H2] =
+                d _ _ _ [g |- cl_b* S''] [g |- cl_e* T''] in
+                let [g |- H1'] = be2_to_be1 [g |- cl_b*e* (eta* H1)] in
+                let [g |- H2'] = be2_to_be1 [g |- cl_b*e* (beta* H2)] in
+                [g |- dia_result H1' H2']
+            )
+        | [g |- eta_be S''] =>
+            (case [g |- T'] of
+            | [g |- beta_be T''] =>
+                let [g |- commute_result H1 H2] =
+                d _ _ _ [g |- cl_b* T''] [g |- cl_e* S''] in
+                let [g |- H1'] = be2_to_be1 [g |- cl_b*e* (eta* H1)] in
+                let [g |- H2'] = be2_to_be1 [g |- cl_b*e* (beta* H2)] in
+                [g |- dia_result H2' H1']
+            | [g |- eta_be T''] =>
+                let [g |- confl_result H1 H2] =
+                eta_confluence [g |- cl_e* S''] [g |- cl_e* T''] in
+                let [g |- H1'] = be2_to_be1 [g |- cl_b*e* (eta* H1)] in
+                let [g |- H2'] = be2_to_be1 [g |- cl_b*e* (eta* H2)] in
+                [g |- dia_result H1' H2']
+            )
+        )
+    )
+;
+
+rec eta_beta_confluence : (g:ctx) [g |- beta_eta* M M1] -> [g |- beta_eta* M M2]
+                     -> [g |- dia_beta_eta M1 M2] =
+/ total d (eta_beta_confluence _ _ _ _ d _ ) /
+fn d => fn s => hindley_rosen (commutation_lemma be_square) _ _ _ d s
+;

@@ -1,0 +1,34 @@
+%Triangle property
+
+rec tri : (g:pcctx) {M : [g |- tm A[]]} [g |- cd M M'] -> [g |- pred M M''] -> [g |- pred M'' M'] =
+/ total d (tri _ _ _ _ _ d _) /
+mlam M => fn d => fn s => case d of
+| [g |- #p.4[..]] => let [g |- #p.2] = s in [g |- #p.2]
+| [g |- cd_beta (\x.\u.\v.D1[..,x,u,v]) D2] =>
+            (case s of
+            | [g |- beta (\y.\w.S1[..,y,w]) S2] =>
+                      let [g |- IH1] = tri _ [g |- D2] [g |- S2] in
+                      let [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri _ [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in
+                      subst _ _ [g,x:tm _,u:pred x x |- IH2[..,x,u]] [g |- IH1]
+            | [g |- ap (lm \y.\w.S1[..,y,w]) S2] =>
+                      let [g |- IH1] = tri _ [g |- D2] [g |- S2] in
+                      let [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri _ [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in
+                      [g |- beta (\x.\v.IH2[..,x,v]) IH1]
+
+            )
+| [g |- cd_lm \x.\u.\v.D] =>
+            let [g |- lm \x.\v.S[..,x,v]] = s in
+            let [g,b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH[..,b.1,b.2]] =
+            tri _ [g,b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- D[..,b.1,b.3,b.4]]
+            [g,b |- S[..,b.1,b.2]] in
+            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- cd_ap D' D1 D2] =>
+            let [g |- ap H1 H2] = s in
+            let [g |- IH1] = tri _ [g |- D1] [g |- H1] in
+            let [g |- IH2] = tri _ [g |- D2] [g |- H2] in
+            [g |- ap IH1 IH2]
+;

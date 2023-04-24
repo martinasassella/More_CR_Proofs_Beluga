@@ -1,0 +1,16 @@
+%Every term either is or isn't a lambda
+
+LF lam_or_not : term -> type =
+| lon_lam : lam_or_not (lam _)
+| lon_not : notlam E -> lam_or_not E
+;
+
+schema nctx = block(x:term, u:notlam x);
+
+rec decide : {g:nctx}{E : [g |- term]} [g |- lam_or_not E] =
+/ total e (decide e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- lon_not #p.2]
+| [g |- lam \x.E'] => [g |- lon_lam]
+| [g |- app E1 E2] => [g |- lon_not (nl_app)]
+;

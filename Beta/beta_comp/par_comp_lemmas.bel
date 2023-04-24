@@ -1,0 +1,23 @@
+%Reflexivity parallel reduction
+rec refl_par : {g:ctx}{M : [g |- term]} pred [g |- M] [g |- M] =
+/ total m (refl_par g m) /
+mlam g => mlam M => case [g |- M] of
+| [g |- #p] => var (vp _)
+| [g |- app M1 M2] => let h1 = refl_par [g] [g |- M1] in
+                      let h2 = refl_par [g] [g |- M2] in
+                      ap h1 h2
+| [g |- lam \x.M'[..,x]] => let h = refl_par [g,x:term] [g,x:term |- M'] in
+                            lm h
+;
+
+%Transitivity of multistep parallel reduction
+rec append : (g:ctx) mstep_pred [g |- M] [g |- M'] -> mstep_pred [g |- M'] [g |- M'']
+                      -> mstep_pred [g |- M] [g |- M''] =
+/ total d (append _ _ _ d _) /
+fn d => fn s => case d of
+| id => s
+| step d1 d2 => (case s of
+                      | id => d
+                      | step s1 s2 => let ih = append d2 s in
+                        step d1 ih)
+;

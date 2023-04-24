@@ -1,0 +1,61 @@
+%Reflexive closure of eta_red is a congruence
+rec cong_lam= : (g:ctx) [g,x:term |-  eta_red= M M']
+      ->  [g |- eta_red= (lam \x.M) (lam \x.M')] =
+/ total d (cong_lam= _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id=] => [g |- id=]
+| [g,x:term |-  cl= D] => [g |- cl= (cong_lam \x.D[..,x])]
+;
+
+rec cong_app1= :  (g:ctx) {M2:[g |- term]}[g |- eta_red= M1 M1']
+                                  -> [g |- eta_red= (app M1 M2) (app M1' M2)] =
+/ total s (cong_app1= _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id=] => [g |- id=]
+| [g |- cl= S] => [g |- cl= (cong_app1 S)]
+;
+
+rec cong_app2= : (g:ctx){M1:[g |- term]} [g |- eta_red= M2 M2'] -> [g |- eta_red= (app M1 M2) (app M1 M2')] =
+/ total s (cong_app2= _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id=] => [g |- id=]
+| [g |- cl= S] => [g |- cl= (cong_app2 S)]
+;
+
+%Reflexive- transitive closure of eta_red is a congruence
+rec cong_lam* : (g:ctx) [g,x:term |-  eta_red* M M']
+      ->  [g |- eta_red* (lam \x.M) (lam \x.M')] =
+/ total d (cong_lam* _ _ _ d) /
+fn d => case d of
+| [g, x:term |- id*] => [g |- id*]
+| [g, x:term |- tr* D1 D2] => 
+      let [g |- D1'] = cong_lam* [g, x:term |- D1] in 
+      let [g |- D2'] = cong_lam* [g, x:term |- D2] in 
+      [g |- tr* D1' D2']
+| [g, x:term |- cl* D] => [g |- cl* (cong_lam \x.D)]
+;
+
+rec cong_app1* :  (g:ctx) {M2:[g |- term]}[g |- eta_red* M1 M1']
+                                  -> [g |- eta_red* (app M1 M2) (app M1' M2)] =
+/ total s (cong_app1* _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id*] => [g |- id*]
+| [g |- tr* D1 D2] => 
+      let [g |- D1'] = cong_app1* [g |- M2] [g |- D1] in 
+      let [g |- D2'] = cong_app1* [g |- M2] [g |- D2] in 
+      [g |- tr* D1' D2']
+| [g |- cl* D] => [g |- cl* (cong_app1 D)]
+;
+
+rec cong_app2* :  (g:ctx) {M1:[g |- term]}[g |- eta_red* M2 M2']
+                                  -> [g |- eta_red* (app M1 M2) (app M1 M2')] =
+/ total s (cong_app2* _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id*] => [g |- id*]
+| [g |- tr* D1 D2] => 
+      let [g |- D1'] = cong_app2* [g |- M1] [g |- D1] in 
+      let [g |- D2'] = cong_app2* [g |- M1] [g |- D2] in 
+      [g |- tr* D1' D2']
+| [g |- cl* D] => [g |- cl* (cong_app2 D)]
+;
+

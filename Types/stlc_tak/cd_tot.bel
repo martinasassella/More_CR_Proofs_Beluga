@@ -1,0 +1,31 @@
+LF reduces : tm A -> type =
+| red_res : cd T1 T2 -> reduces T1;
+
+%An application reduces if its components do
+rec tot_app : (g:cctx) {E1 : [g |- tm (arr A[] B[])]}{E2 : [g |- tm A[]]}
+                      [g |- abs_or_not E1] -> [g |- cd E1 E1'] -> [g |- cd E2 E2']
+                       -> [g |- reduces (app E1 E2)] =
+/ total d (tot_app _ _ _ _ _ d _ _) /
+mlam E1 => mlam E2 => fn d => fn s => fn r => case d of
+| [g |- lon_abs] => let [g |- cd_lm \x.\u.\v.S] = s in
+                    let [g |- R] = r in
+                    [g |- red_res (cd_beta (\x.\u.\v.S) R)]
+| [g |- lon_not D] => let [g |- S] = s in
+                      let [g |- R] = r in
+                      [g |- red_res (cd_ap D S R)]
+;
+
+%%Complete development is total
+rec cd_tot : {g : cctx}{E : [g |- tm A[]]} [g |- reduces E] =
+/ total e (cd_tot _ _ e) /
+mlam g => mlam E =>  case [g |- E] of
+| [g |- #p.1] => [g |- red_res #p.3]
+| [g |- abs \x.E'[..,x]] : [g |- tm (arr A1[] B1[])] =>
+        let [g, b:block(x:tm A1[], u: notabs x, v: cd x x) |- red_res IH[..,b.1,b.2,b.3]] =
+        cd_tot [g,b:block(x:tm A1[], u: notabs x, v: cd x x)] [g,b |- E'[..,b.1]] in
+        [g |- red_res (cd_lm \x.\u.\v.IH[..,x,u,v])]
+| [g |- app E1 E2] => let [g |- red_res D1] = cd_tot [g] [g |- E1] in
+                      let [g |- red_res D2] = cd_tot [g] [g |- E2] in
+                      let [g |- H] = decide [g] [g |- E1] in
+                      tot_app _ _ [g |- H] [g |- D1] [g |- D2]
+;

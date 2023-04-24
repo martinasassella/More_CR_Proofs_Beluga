@@ -1,0 +1,62 @@
+%Equivalence of ordinary and parallel reduction
+
+rec par_to_beta : (g:ctx) pred [g |- M] [g |- N] -> mstep [g |- M] [g |- N] =
+/ total d (par_to_beta _ _ _ d) /
+fn d => case d of
+| var (vp [g |- #p]) => id1
+| ap d1 d2 =>
+        let ih1 = par_to_beta d1 in
+        let s1  = apl1* _ ih1 in
+        let ih2 = par_to_beta d2 in
+        let s2 = apr1* _ ih2 in
+        trans_mstep s1 s2
+| lm d' =>
+        let ih = par_to_beta d' in
+        lm1* ih
+| beta d1 d2 =>
+        let ih1 = par_to_beta d1 in
+        let ih2 = par_to_beta d2 in
+        let s' = lm1* ih1 in
+        let s'' = apl1* _ s' in
+        let s''' = apr1* _ ih2 in
+        let s1'  = trans_mstep s'' s''' in
+        trans_mstep s1' (step1 beta1 id1)
+;
+
+
+rec beta_to_par: (g:ctx) step [g |- M] [g |- N] -> pred [g |- M] [g |- N] =
+/ total d (beta_to_par _ _ _ d) /
+fn d => case d of
+| beta1 : step [g |- app (lam \x. M1) M2] [g |- M1[..,M2]] =>
+          let i1 = refl_par _  [g, x:term  |-  M1[..,x] ] in
+          let i2 = refl_par _ [g |- M2] in
+          beta i1 i2
+| lm1 d' => let ih = beta_to_par d' in
+            lm ih
+| apl1 d' : step [g |- app M1 M2] [g |- app M1' M2] =>
+                   let ih = beta_to_par d' in
+                   let i2 = refl_par _ [g |- M2] in
+                   ap ih i2
+| apr1 d' : step [g |- app M1 M2] [g |- app M1 M2'] =>
+                   let ih = beta_to_par d' in
+                   let i1 = refl_par _ [g |- M1] in
+                   ap i1 ih
+;
+
+rec mpar_to_mbeta: (g:ctx) mstep_pred [g |- M] [g |- N] -> mstep [g |- M] [g |- N] =
+/ total d (mpar_to_mbeta _ _ _ d) /
+fn d => case d of
+| id => id1
+| step d1 d2 => let ih1 = par_to_beta d1 in
+                let ih2 = mpar_to_mbeta d2 in
+                trans_mstep ih1 ih2
+;
+
+rec mbeta_to_mpar: (g:ctx) mstep [g |- M] [g |- N] -> mstep_pred [g |- M] [g |- N] =
+/ total d (mbeta_to_mpar _ _ _ d) /
+fn d => case d of
+| id1 => id
+| step1 d1 d2 => let ih1 = mbeta_to_mpar d2 in
+                 let ih2 = beta_to_par d1 in
+                 step ih2 ih1
+;

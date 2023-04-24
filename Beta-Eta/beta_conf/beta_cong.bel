@@ -1,0 +1,76 @@
+%Reflexive closure of beta_red is a congruence
+rec lm= : (g:ctx) [g,x:term |-  beta_red= M M']
+      ->  [g |- beta_red= (lam \x.M) (lam \x.M')] =
+/ total d (lm= _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id_b=] => [g |- id_b=]
+| [g,x:term |-  cl_b= D] => [g |- cl_b= (lm1 \x.D[..,x])]
+;
+
+rec apl= :  (g:ctx) {M2:[g |- term]}[g |- beta_red= M1 M1']
+                                  -> [g |- beta_red= (app M1 M2) (app M1' M2)] =
+/ total s (apl= _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id_b=] => [g |- id_b=]
+| [g |- cl_b= S] => [g |- cl_b= (apl1 S)]
+;
+
+rec apr= : (g:ctx){M1:[g |- term]} [g |- beta_red= M2 M2'] -> [g |- beta_red= (app M1 M2) (app M1 M2')] =
+/ total s (apr= _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id_b=] => [g |- id_b=]
+| [g |- cl_b= S] => [g |- cl_b= (apr1 S)]
+;
+
+%Multi-step beta_red is a congruence
+rec lm_multi : (g:ctx) [g,x:term |-  multi_beta_red M M']
+      ->  [g |- multi_beta_red (lam \x.M) (lam \x.M')] =
+/ total d (lm_multi _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id_beta] => [g |- id_beta]
+| [g,x:term |-  step_beta D1 D2] => let [g |- IH] = lm_multi [g, x |- D2] in
+                                   [g |- step_beta (lm1 \x.D1[..,x]) IH]
+
+;
+
+rec apl_multi :  (g:ctx) {M2:[g |- term]}[g |- multi_beta_red M1 M1']
+                                  -> [g |- multi_beta_red (app M1 M2) (app M1' M2)] =
+/ total s (apl_multi _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id_beta] => [g |- id_beta]
+| [g |- step_beta S1 S2] => let [g |- IH] = apl_multi [g |- M2] [g |- S2] in
+                           [g |- step_beta (apl1 S1) IH]
+;
+
+rec apr_multi : (g:ctx){M1:[g |- term]} [g |- multi_beta_red M2 M2'] -> [g |- multi_beta_red (app M1 M2) (app M1 M2')] =
+/ total s (apr_multi _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id_beta] => [g |- id_beta]
+| [g |- step_beta S1 S2] => let [g |- IH] = apr_multi [g |- M1] [g |- S2] in
+                           [g |- step_beta (apr1 S1) IH]
+;
+
+%Reflexive- transitive closure of beta_red is a congruence
+rec lm* : (g:ctx) [g,x:term |-  beta_red* M M']
+      ->  [g |- beta_red* (lam \x.M) (lam \x.M')] =
+/ total d (lm* _ _ _ d) /
+fn d => let [g, x:term |- D] = star_multi d in
+        let [g |- H] = lm_multi [g,x |- D] in
+        multi_star [g |- H]
+;
+
+rec apl* :  (g:ctx) {M2:[g |- term]}[g |- beta_red* M1 M1']
+                                  -> [g |- beta_red* (app M1 M2) (app M1' M2)] =
+/ total s (apl* _ _ _ s) /
+mlam M2 => fn s => let [g |- S] = star_multi s in
+                   let [g |- H] = apl_multi [g |- M2] [g |- S] in
+                   multi_star [g |- H]
+;
+
+rec apr* :  (g:ctx) {M1:[g |- term]}[g |- beta_red* M2 M2']
+                                  -> [g |- beta_red* (app M1 M2) (app M1 M2')] =
+/ total s (apr* _ _ _ s) /
+mlam M1 => fn s => let [g |- S] = star_multi s in
+                   let [g |- H] = apr_multi [g |- M1] [g |- S] in
+                   multi_star [g |- H]
+;

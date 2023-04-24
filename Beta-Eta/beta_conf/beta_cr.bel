@@ -1,0 +1,20 @@
+%Church-Rosser property for beta reduction
+
+LF cr_beta_conc : term -> term -> type =
+| cr_beta_res : beta_red* M1 N -> beta_red* M2 N -> cr_beta_conc M1 M2
+;
+
+rec cr_beta : (g:ctx) {M : [g |- term]}{M1 : [g |- term]}{M2 : [g |- term]}
+                      [g |- beta_red* M M1] -> [g |- beta_red* M M2] -> [g |- cr_beta_conc M1 M2] =
+mlam M => mlam M1 => mlam M2 => fn d => fn s =>
+        let [g |- D1] = star_multi d in
+        let [g |- S1] = star_multi s in
+        let [g |- D1'] = mbeta_to_mpar [g |- D1] in
+        let [g |- S1'] = mbeta_to_mpar [g |- S1] in
+        let [g |- conf_result H1' H2'] = conf [g |- D1'] [g |- S1'] in
+        let [g |- H1''] = mpar_to_mbeta [g |- H1'] in
+        let [g |- H2''] = mpar_to_mbeta [g |- H2'] in
+        let [g |- H1] = multi_star [g |- H1''] in
+        let [g |- H2] = multi_star [g |- H2''] in
+        [g |- cr_beta_res H1 H2]
+;

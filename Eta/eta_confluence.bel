@@ -1,0 +1,7 @@
+%Confluence of eta reduction
+
+rec eta_confluence : (g:ctx) [g |- eta_red* M M1] -> [g |- eta_red* M M2]
+                     -> [g |- confl_prop M1 M2] =
+/ total d (eta_confluence _ _ _ _ d _ ) /
+fn d => fn s => (commutation_lemma square _ _ _ d s) 
+;

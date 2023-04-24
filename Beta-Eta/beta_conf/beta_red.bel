@@ -1,0 +1,70 @@
+%Untyped lambda terms
+LF term : type =
+| lam : (term -> term) -> term
+| app : term -> term -> term
+;
+
+%Equality
+LF eq : term -> term -> type =
+| refl : eq M M
+;
+
+%Ordinary reduction relation
+LF beta_red : term -> term -> type =
+| beta1 : beta_red (app (lam M1) M2) (M1 M2)
+| lm1   : ({x:term} beta_red (M x) (M' x)) -> beta_red  (lam M) (lam M')
+| apl1  : beta_red M1 M1' -> beta_red (app M1 M2) (app M1' M2)
+| apr1  : beta_red M2 M2' -> beta_red (app M1 M2) (app M1 M2')
+;
+
+%Reflexive closure of beta_red
+LF beta_red= : term -> term -> type =
+| id_b= : beta_red= M M
+| cl_b= : beta_red M N -> beta_red= M N
+;
+
+%Transitive-reflexive closure of beta_red
+LF beta_red* : term -> term -> type =
+| id_b* : beta_red* M M
+| tr_b* : beta_red* M1 M2 -> beta_red* M2 M3
+        -> beta_red* M1 M3
+| cl_b* : beta_red M N -> beta_red* M N
+;
+
+%Transitive-reflexive closure of beta_red (equivalent definition)
+LF multi_beta_red : term -> term -> type =
+| id_beta : multi_beta_red M M
+| step_beta : beta_red M M' -> multi_beta_red M' M''
+             -> multi_beta_red M M''
+;
+
+schema ctx = term;
+
+%Equivalence between the two definitions:
+%Transitivity of multi_beta_red
+rec trans_multi_beta : (g:ctx)[g |- multi_beta_red M M'] -> [g |- multi_beta_red M' M''] -> [g |- multi_beta_red M M''] =
+/ total d (trans_multi_beta _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id_beta] => s
+| [g |- step_beta D1 D2] => let [g |- IH] = trans_multi_beta [g |- D2] s in
+                           [g |- step_beta D1 IH]
+;
+
+rec multi_star : (g:ctx) [g |- multi_beta_red M N] -> [g |- beta_red* M N] =
+/ total d (multi_star _ _ _ d) /
+fn d => case d of
+| [g |- id_beta] => [g |- id_b*]
+| [g |- step_beta D1 D2] => let [g |- IH2] = multi_star [g |- D2] in
+                           [g |- tr_b* (cl_b* D1) IH2]
+
+;
+
+rec star_multi : (g:ctx) [g |- beta_red* M N] -> [g |- multi_beta_red M N] =
+/ total d (star_multi _ _ _ d) /
+fn d => case d of
+| [g |- id_b*] => [g |- id_beta]
+| [g |- tr_b* D1 D2] => let [g |- IH1] = star_multi [g |- D1] in
+                      let [g |- IH2] = star_multi [g |- D2] in
+                      trans_multi_beta [g |- IH1] [g |- IH2]
+| [g |- cl_b* D] => [g |- step_beta D id_beta]
+;

@@ -1,0 +1,37 @@
+%Every term either is or isn't a lambda
+
+LF abs_or_not : tm A -> type =
+| lon_abs : abs_or_not (abs _)
+| lon_not : notabs E -> abs_or_not E
+;
+
+schema nctx = some [a:ty] block(x:tm a, u:notabs x) + ty;
+
+rec decide_abs : {g:nctx}{E : [g |- tm A]} [g |- abs_or_not E] =
+/ total e (decide_abs e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- lon_not #p.2]
+| [g |- abs \x.E'] => [g |- lon_abs]
+| [g |- app E1 E2] => [g |- lon_not (nl_app)]
+| [g |- tlam \a.E'] => [g |- lon_not (nl_tlam)]
+| [g |- tapp E1 E2] => [g |- lon_not (nl_tapp)]
+;
+
+%Every term either is or isn't a t-lambda
+
+LF tlam_or_not : tm A -> type =
+| ton_tlam : tlam_or_not (tlam _)
+| ton_not : nottlam E -> tlam_or_not E
+;
+
+schema tnctx = some [a:ty] block(x:tm a, u:nottlam x) + ty;
+
+rec decide_tlam : {g:tnctx}{E : [g |- tm A]} [g |- tlam_or_not E] =
+/ total e (decide_tlam e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- ton_not #p.2]
+| [g |- abs \x.E'] => [g |- ton_not (ntl_abs)]
+| [g |- app E1 E2] => [g |- ton_not (ntl_app)]
+| [g |- tlam \a.E'] => [g |- ton_tlam]
+| [g |- tapp E1 E2] => [g |- ton_not (ntl_tapp)]
+;

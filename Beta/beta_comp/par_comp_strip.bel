@@ -1,0 +1,13 @@
+%Strip Property Lemma
+inductive strip_prop: (g:ctx) [g |- term] -> [g |- term] -> ctype =
+| strip_result: mstep_pred [g |- M'] [g |- N] -> pred [g |- M''] [g|- N]
+                -> strip_prop [g |- M'] [g |- M''];
+rec strip : (g:ctx) pred [g |- M] [g |- M'] -> mstep_pred [g |- M] [g |- M'']
+                -> strip_prop [g |- M'] [g |- M''] =
+/ total s (strip g m m' m'' r s) /
+fn r => fn s => case s of
+| id => strip_result id r
+| step r1 r2 => let dia_result s1 s1' = dia r r1 in
+                       let strip_result s2 s2' = strip s1' r2 in
+                       strip_result (step s1 s2) s2'
+;

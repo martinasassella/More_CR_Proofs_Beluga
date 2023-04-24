@@ -1,0 +1,91 @@
+%Reflexive closure of eta_red is a congruence
+rec cong_lam= : (g:ctx) [g,x:term |-  eta_red= M M']
+      ->  [g |- eta_red= (lam \x.M) (lam \x.M')] =
+/ total d (cong_lam= _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id_e=] => [g |- id_e=]
+| [g,x:term |-  cl_e= D] => [g |- cl_e= (cong_lam \x.D[..,x])]
+;
+
+rec cong_app1= :  (g:ctx) {M2:[g |- term]}[g |- eta_red= M1 M1']
+                                  -> [g |- eta_red= (app M1 M2) (app M1' M2)] =
+/ total s (cong_app1= _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id_e=] => [g |- id_e=]
+| [g |- cl_e= S] => [g |- cl_e= (cong_app1 S)]
+;
+
+rec cong_app2= : (g:ctx){M1:[g |- term]} [g |- eta_red= M2 M2'] -> [g |- eta_red= (app M1 M2) (app M1 M2')] =
+/ total s (cong_app2= _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id_e=] => [g |- id_e=]
+| [g |- cl_e= S] => [g |- cl_e= (cong_app2 S)]
+;
+
+%Multi-step eta_red is a congruence
+rec cong_lam_multi : (g:ctx) [g,x:term |-  multi_eta_red M M']
+      ->  [g |- multi_eta_red (lam \x.M) (lam \x.M')] =
+/ total d (cong_lam_multi _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id_eta] => [g |- id_eta]
+| [g,x:term |-  step_eta D1 D2] => let [g |- IH] = cong_lam_multi [g, x |- D2] in
+                                   [g |- step_eta (cong_lam \x.D1[..,x]) IH]
+
+;
+
+rec cong_app1_multi :  (g:ctx) {M2:[g |- term]}[g |- multi_eta_red M1 M1']
+                                  -> [g |- multi_eta_red (app M1 M2) (app M1' M2)] =
+/ total s (cong_app1_multi _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id_eta] => [g |- id_eta]
+| [g |- step_eta S1 S2] => let [g |- IH] = cong_app1_multi [g |- M2] [g |- S2] in
+                           [g |- step_eta (cong_app1 S1) IH]
+;
+
+rec cong_app2_multi : (g:ctx){M1:[g |- term]} [g |- multi_eta_red M2 M2'] -> [g |- multi_eta_red (app M1 M2) (app M1 M2')] =
+/ total s (cong_app2_multi _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id_eta] => [g |- id_eta]
+| [g |- step_eta S1 S2] => let [g |- IH] = cong_app2_multi [g |- M1] [g |- S2] in
+                           [g |- step_eta (cong_app2 S1) IH]
+;
+
+%Reflexive- transitive closure of eta_red is a congruence
+rec cong_lam* : (g:ctx) [g,x:term |-  eta_red* M M']
+      ->  [g |- eta_red* (lam \x.M) (lam \x.M')] =
+/ total d (cong_lam* _ _ _ d) /
+fn d => case d of
+| [g, x:term |- id_e*] => [g |- id_e*]
+| [g, x:term |- tr_e* D1 D2] => 
+    let [g |- H1] = cong_lam* [g,x:term |- D1] in 
+    let [g |- H2] = cong_lam* [g,x:term |- D2] in 
+    [g |- tr_e* H1 H2]
+| [g, x:term |- cl_e* D] => 
+        [g |- cl_e* (cong_lam \x.D)]
+;
+
+rec cong_app1* :  (g:ctx) {M2:[g |- term]}[g |- eta_red* M1 M1']
+                                  -> [g |- eta_red* (app M1 M2) (app M1' M2)] =
+/ total s (cong_app1* _ _ _ s) /
+mlam M2 => fn d => case d of
+| [g |- id_e*] => [g |- id_e*]
+| [g |- tr_e* D1 D2] => 
+    let [g |- H1] = cong_app1* [g |- M2] [g |- D1] in 
+    let [g |- H2] = cong_app1*[g |- M2] [g |- D2] in 
+    [g |- tr_e* H1 H2]
+| [g |- cl_e* D] => 
+    [g |- cl_e* (cong_app1 D)]
+;
+
+rec cong_app2* :  (g:ctx) {M1:[g |- term]}[g |- eta_red* M2 M2']
+                                  -> [g |- eta_red* (app M1 M2) (app M1 M2')] =
+/ total s (cong_app2* _ _ _ s) /
+mlam M1 => fn d => case d of
+| [g |- id_e*] => [g |- id_e*]
+| [g |- tr_e* D1 D2] => 
+    let [g |- H1] = cong_app2* [g |- M1] [g |- D1] in 
+    let [g |- H2] = cong_app2*[g |- M1] [g |- D2] in 
+    [g |- tr_e* H1 H2]
+| [g |- cl_e* D] => 
+    [g |- cl_e* (cong_app2 D)]
+;

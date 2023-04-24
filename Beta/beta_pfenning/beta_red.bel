@@ -1,0 +1,29 @@
+%Untyped lambda terms
+LF term : type =
+| lam : (term -> term) -> term
+| app : term -> term -> term
+;
+
+%Ordinary reduction relation
+LF step : term -> term -> type =
+| beta1 : step (app (lam M1) M2) (M1 M2)
+| lm1   : ({x:term} step (M x) (M' x)) -> step  (lam M) (lam M')
+| apl1  : step M1 M1' -> step (app M1 M2) (app M1' M2)
+| apr1  : step M2 M2' -> step (app M1 M2) (app M1 M2')
+;
+
+%Multistep reduction
+LF mstep : term -> term -> type =
+| id1 : mstep M M
+| step1 : step M M' -> mstep M' M''
+          -> mstep M M''
+;
+
+%Conversion
+LF conv : term -> term -> type =
+| refl : conv M M
+| sym  : conv M' M -> conv M M'
+| trans: conv M' M'' -> conv M  M'
+         -> conv M  M''
+| red  : mstep M M' -> conv M M'
+;

@@ -1,0 +1,29 @@
+LF eq : tm A -> tm A -> type =
+| refl : eq E E
+;
+
+
+%Complete development is deterministic
+
+rec cd_det : (g:cctx) {E : [g |- tm A[]]}[g |- cd E E'] -> [g |- cd E E''] -> [g |- eq E' E''] =
+/ total d (cd_det _ _ _ _ _ d _) /
+mlam E => fn d => fn s => case d of
+| [g |- #p.3] => let [g |- #p.3] = s in [g |- refl]
+| [g |- cd_ap D' D1 D2] =>
+                let [g |- cd_ap S' S1 S2] = s in
+                let [g |- refl] = cd_det _ [g |- D1] [g |- S1] in
+                let [g |- refl] = cd_det _ [g |- D2] [g |- S2] in
+                [g |- refl]
+| [g |- cd_lm \x.\u.\v.D] =>
+                let [g |- cd_lm \x.\u.\v.S] = s in
+                let [g, b:block(x:tm _, u: notabs x, v: cd x x) |- refl] =
+                cd_det _ [g, b:block(x:tm _, u: notabs x, v: cd x x) |- D[..,b.1,b.2,b.3]]
+                [g,b |- S[..,b.1,b.2,b.3]] in [g |- refl]
+| [g |- cd_beta (\x.\u.\v.D1) D2] =>
+                let [g |- cd_beta (\x.\u.\v.S1) S2] = s in
+                let [g, b:block(x:tm _, u: notabs x, v: cd x x) |- refl] =
+                cd_det _ [g, b:block(x:tm _, u: notabs x, v: cd x x) |- D1[..,b.1,b.2,b.3]]
+                [g,b |- S1[..,b.1,b.2,b.3]] in
+                let [g |- refl] = cd_det _ [g |- D2] [g |- S2] in
+                [g |- refl]
+;

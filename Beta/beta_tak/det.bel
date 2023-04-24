@@ -1,0 +1,49 @@
+LF eq : term -> term -> type =
+| refl : eq E E
+;
+
+schema ctx = term;
+
+rec id_app_cong : (g:ctx)[g |- eq E1 E1'] -> [g |- eq E2 E2'] -> [g |- eq (app E1 E2) (app E1' E2')] =
+/ total d (id_app_cong _ _ _ _ _ d _) /
+fn d => fn s => let [g |- refl] = d in
+                let [g |- refl] = s in [g |- refl]
+;
+
+rec id_lam_cong : (g:ctx) [g,x:term |- eq E E'] -> [g |- eq (lam \x.E) (lam \x.E')] =
+/ total d (id_lam_cong _ _ _ d) /
+fn d => let [g,x:term |- refl] = d in [g |- refl]
+;
+
+rec id_func : (g:ctx) [g,x:term |- eq E E'] -> [g |- eq E1 E1']
+	   -> [g |- eq (E[..,E1]) (E'[..,E1'])] =
+/ total d (id_func _ _ _ _ _ d _) /
+fn d => fn s => let [g |- refl] = s in
+                let [g,x:term |- refl] = d in
+                [g |- refl]
+;
+
+%Complete development is deterministic
+
+rec cd_det : (g:cctx) [g |- cd E E'] -> [g |- cd E E''] -> [g |- eq E' E''] =
+/ total d (cd_det _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- #p.3] => let [g |- #p.3] = s in [g |- refl]
+| [g |- cd_ap D' D1 D2] =>
+                let [g |- cd_ap S' S1 S2] = s in
+                let [g |- refl] = cd_det [g |- D1] [g |- S1] in
+                let [g |- refl] = cd_det [g |- D2] [g |- S2] in
+                [g |- refl]
+| [g |- cd_lm \x.\u.\v.D] =>
+                let [g |- cd_lm \x.\u.\v.S] = s in
+                let [g, b:block(x:term, u: notlam x, v: cd x x) |- refl] =
+                cd_det [g, b:block(x:term, u: notlam x, v: cd x x) |- D[..,b.1,b.2,b.3]]
+                [g,b |- S[..,b.1,b.2,b.3]] in [g |- refl]
+| [g |- cd_beta (\x.\u.\v.D1) D2] =>
+                let [g |- cd_beta (\x.\u.\v.S1) S2] = s in
+                let [g, b:block(x:term, u: notlam x, v: cd x x) |- refl] =
+                cd_det [g, b:block(x:term, u: notlam x, v: cd x x) |- D1[..,b.1,b.2,b.3]]
+                [g,b |- S1[..,b.1,b.2,b.3]] in
+                let [g |- refl] = cd_det [g |- D2] [g |- S2] in
+                [g |- refl]
+;
