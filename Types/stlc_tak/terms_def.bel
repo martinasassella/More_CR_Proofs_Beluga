@@ -1,7 +1,4 @@
-% Mechanization of POPLMARK Reloaded challenge:
-% Sec 2.1: Well-typed Terms and Reductions
 
-%coverage
 
 LF ty : type =
    | base : ty

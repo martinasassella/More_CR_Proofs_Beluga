@@ -1,4 +1,4 @@
-%Church-Rosser property for beta reduction in L2
+% Church-Rosser property for beta reduction in L2
 
 LF cr_conc : tm A -> tm A -> type =
 | cr_res : mstep M1 N -> mstep M2 N -> cr_conc M1 M2

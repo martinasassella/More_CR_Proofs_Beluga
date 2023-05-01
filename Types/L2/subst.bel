@@ -1,9 +1,12 @@
+% we do this to ensure that the substitution lemma is covering.
+
+
 --coverage
-%Substitution lemma
+% Substitution lemma for pred
 rec subst : (g:pctx){M : [g, x: tm A |- tm B[..]]}{N : [g |- tm A]}
                     [g, x:tm A, u:pred x x |- pred M[..,x] M'[..,x]] -> [g |- pred N N']
                     -> [g |- pred M[..,N] M'[..,N']] =
-%/ total d (subst _ _ _ _ _ _ _ d _) /
+/ trust /
 mlam M => mlam N => fn d => fn s => case d of
 | [g, x:tm A, u:pred x x |- u] => s
 | [g, x:tm A, u:pred x x |- #p.2[..]] => [g |- #p.2]

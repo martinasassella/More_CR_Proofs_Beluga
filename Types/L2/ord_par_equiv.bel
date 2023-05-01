@@ -1,4 +1,4 @@
-%Equivalence of ordinary and parallel reduction for L2
+% Equivalence of ordinary and parallel reduction for L2
 
 rec par_to_beta : (g:pctx) {M : [g |- tm A]} [g |- pred M N] -> [g |- mstep M N] =
 / total d (par_to_beta _ _ _ _ d) /
@@ -33,24 +33,6 @@ mlam M => fn d => case d of
                         let [g |- S'] = mstep_tlam _ [g,z:ty |- IH] in 
                         let [g |- S''] = mstep_tapp _ [g |- A1] [g |- S'] in 
                         m-trans _ [g |- S''] [g |- m-step rbetall m-refl]
-;
-
-%Reflexivity parallel reduction
-rec refl_par : {g:pctx}{M : [g |- tm A]}[g |- pred M M] =
-/ total m (refl_par _ _ m) /
-mlam g => mlam M => case [g |- M] of
-| [g |- #p.1] => [g |- #p.2]
-| [g |- abs \x.M'[..,x]] => let [g, b:block(x:tm _,v:pred x x) |- IH[..,b.1,b.2]] =
-                            refl_par [g, b:block(x:tm _,v:pred x x)] [g,b |- M'[..,b.1]] in
-                            [g |- lm \x.\v.IH[..,x,v]]
-| [g |- app M1 M2] => let [g |- IH1] = refl_par [g] [g |- M1] in
-                      let [g |- IH2] = refl_par [g] [g |- M2] in
-                      [g |- ap IH1 IH2]
-| [g |- tlam \a.M'] => let [g, a:ty |- IH] = refl_par _ [g, a:ty |- M'] in 
-                       [g |- tlm \a.IH]
-| [g |- tapp M' A] => let [g |- IH] = refl_par _ [g |- M'] in
-                      [g |- tap IH]
-
 ;
 
 

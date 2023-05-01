@@ -1,9 +1,8 @@
 %  Well-typed Terms and Reductions
 
---coverage
 
 LF ty : type =
-%   | base : ty       % needed?
+%   | base : ty       
    | arr  : ty -> ty -> ty
    | all : (ty -> ty) -> ty			 
 ;
@@ -15,8 +14,6 @@ LF tm : ty -> type =
    | tlam : ({a:ty} tm (A a)) -> tm (all A)
    | tapp : tm (all A) -> {B:ty} tm (A B)
 ;
-
-% --name tm M;
 
 schema cxt = tm A + ty;
 
@@ -48,7 +45,7 @@ mlam M1 => fn s1, s2 => case s1 of
         [_ |- m-step S MS']
 ;
 
-% If [g |- mstep M M'] then [g |- mstep (app M N) (app M' N)].
+% congruence of mstep: app case left
 rec mstep_appl : (g: cxt) {M  : [g |- tm (arr A[..] B[..])]}{M' : [g |- tm (arr A[..] B[..])]} {N  : [g |- tm A[..]]}
         [g |- mstep M M'] -> [g |- mstep (app M N) (app M' N)] =
 / total ms (mstep_appl g a b m m' n ms) /
@@ -60,7 +57,7 @@ case ms of
     [_ |- m-step (rappl S) MS'']
 ;
 
-% If [g |- mstep N N'] then [g |- mstep (app M N) (app M N')].
+% % congruence of mstep: app right
 rec mstep_appr : (g: cxt) {M  : [g |- tm (arr A[..] B[..])]}{N  : [g |- tm A[..]]}{N' : [g |- tm A[..]]}
         [g |- mstep N N'] -> [g |- mstep (app M N) (app M N')] =
 / total ms (mstep_appr g a b m n n' ms) /
@@ -72,7 +69,7 @@ case ms of
     [g |- m-step (rappr S) MS'']
 ;
 
-% If [g, x:tm A[..] |- mstep M M'] then [g |- mstep (abs \x.M) (abs \x.M')]
+% congruence of mstep: abs case
 rec mstep_abs : (g : cxt) {M : [g , x: tm A[..] |- tm B[..]]}
         [g, x:tm A[..] |- mstep M M']-> [g |- mstep (abs \x.M) (abs \x.M')] =
     / total ms (mstep_abs g a b m m' ms) /
@@ -83,7 +80,7 @@ rec mstep_abs : (g : cxt) {M : [g , x: tm A[..] |- tm B[..]]}
       [g |- m-step (rabs \x.S) MS']
 ;
 
-% If [g, a:ty |- mstep M M'] then [g |- mstep (tlam \x.M) (tlam \x.M')]
+% % congruence of mstep: tlam case
 rec mstep_tlam : (g : cxt) {M : [g , a:ty |- tm B[..,a]]}
         [g, a:ty |- mstep M M']-> [g |- mstep (tlam \x.M) (tlam \x.M')] =
 / total ms (mstep_tlam _ _ _ m ms) /
@@ -94,7 +91,7 @@ rec mstep_tlam : (g : cxt) {M : [g , a:ty |- tm B[..,a]]}
       [g |- m-step (rtlam \x.S) MS']
 ;
 
-% If [g |- mstep M M'] then [g |- mstep (tapp M A) (tapp M' A)]
+% congruence of mstep: tapp (only) case
 rec mstep_tapp : (g : cxt) {M  : [g |- tm (all \x.A)]} {B: [g |- ty]} [g |- mstep M M'] -> [g |- mstep (tapp M B) (tapp M' B)] =
 / total ms (mstep_tapp _ _ _ _ _ ms) /
  mlam M => mlam B => fn s1 => case s1 of
@@ -104,11 +101,11 @@ rec mstep_tapp : (g : cxt) {M  : [g |- tm (all \x.A)]} {B: [g |- ty]} [g |- mste
  		[g |- m-step (tappl S) MS']
  ;
 
-% If M: [g, x: tm A[..] |- tm B[..]] and [g |- step N N'] then [g |- mstep M[..,N] M[..,N']].
+% simultaneous substitution for mstep -- not needed in the proof
 rec subst_mred : (g: cxt) {M : [g, x: tm A[..] |- tm B[..]]}{N : [g |- tm A[..]]}{N': [g |- tm A[..]]}
         [g |- step N N'] -> [g |- mstep M[..,N] M[..,N']] =
    / trust /
-   % Totality checker does not take into account modulo exchange; it only consider direct subterms
+   % Totality checker does not take into account exchange; it only consider direct subterms
     mlam M => mlam N => mlam N' => fn s => case [_, x:tm _ |- M] of
     | [g, x:tm A[..] |- x ] => let [g |- S] = s in [g |- m-step S m-refl]
     | [g, x:tm A[..] |- #p[..] ] => [g |- m-refl]

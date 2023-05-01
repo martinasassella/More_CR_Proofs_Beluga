@@ -1,11 +1,8 @@
-%Every term either is or isn't a lambda
-
+%Every term either is or isn't an abstraction
 LF abs_or_not : tm A -> type =
 | lon_abs : abs_or_not (abs _)
 | lon_not : notabs E -> abs_or_not E
 ;
-
-schema nctx = some [a:ty] block(x:tm a, u:notabs x) + ty;
 
 rec decide_abs : {g:nctx}{E : [g |- tm A]} [g |- abs_or_not E] =
 / total e (decide_abs e) /
@@ -24,7 +21,6 @@ LF tlam_or_not : tm A -> type =
 | ton_not : nottlam E -> tlam_or_not E
 ;
 
-schema tnctx = some [a:ty] block(x:tm a, u:nottlam x) + ty;
 
 rec decide_tlam : {g:tnctx}{E : [g |- tm A]} [g |- tlam_or_not E] =
 / total e (decide_tlam e) /

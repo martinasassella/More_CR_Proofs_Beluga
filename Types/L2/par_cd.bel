@@ -19,24 +19,20 @@ LF mstep_pred : tm A -> tm A -> type =
    | p-step : pred M N -> mstep_pred N M' -> mstep_pred M M'
 ;
 
-
-
-
-%Not abstraction over terms judgement
+% Not term abstraction 
 LF notabs : tm A -> type =
 | nl_app : notabs (app _ _)
 | nl_tlam : notabs (tlam _)
 | nl_tapp : notabs (tapp _ _)
 ;
 
-%Not abstraction over types judgement
+% Not type abstraction
 LF nottlam : tm A -> type =
 | ntl_abs : nottlam (abs _)
 | ntl_app : nottlam (app _ _)
 | ntl_tapp : nottlam (tapp _ _)
 ;
 
-%schema nctx = some [a:ty] block(x:tm a, v: notabs x) + ty;
 
 %Complete development
 LF cd : tm A -> tm A -> type =
@@ -44,16 +40,37 @@ LF cd : tm A -> tm A -> type =
           -> cd (abs M) (abs M')
 | cd_ap : notabs M1 -> cd M1 M1' -> cd M2 M2'
           -> cd (app M1 M2) (app M1' M2')
-| cd_tlm : ({X:ty} cd (M X) (M' X))
+| cd_tlm : ({a:ty} cd (M a) (M' a))
 		  -> cd (tlam M) (tlam M')
 | cd_tap : nottlam M1 -> cd M1 M1'
           -> cd (tapp M1 A) (tapp M1' A)
 | cd_beta : ({x:tm A} notabs x -> cd x x -> cd (M x) (M' x)) -> cd N N'
             -> cd (app (abs M) N) (M' N')
-| cd_tbeta : ({X:ty} cd (M X) (M' X))
+| cd_tbeta : ({a:ty} cd (M a) (M' a))
 			 -> cd (tapp (tlam M) A) (M' A)
 ;
 
-schema pctx = some [a:ty] block(x:tm a, v:pred x x) + ty;
-schema cctx = some [a:ty] block(x:tm a, u: notabs x, v: cd x x) + ty;
-schema pcctx = some [a:ty] block(x:tm a, w: pred x x, u: notabs x, v: cd x x) + ty;
+schema pctx = some [A:ty] block(x:tm A, v:pred x x) + ty;
+schema nctx = some [a:ty] block(x:tm a, u:notabs x) + ty;
+schema tnctx = some [a:ty] block(x:tm a, u:nottlam x) + ty;
+schema cctx = some [A:ty] block(x:tm A, u: notabs x, v: cd x x) + ty;
+schema pcctx = some [A:ty] block(x:tm A, w: pred x x, u: notabs x, v: cd x x) + ty;
+
+% Reflexivity of parallel reduction
+rec refl_par : {g:pctx}{M : [g |- tm A]}[g |- pred M M] =
+/ total m (refl_par _ _ m) /
+mlam g => mlam M => case [g |- M] of
+| [g |- #p.1] => [g |- #p.2]
+| [g |- abs \x.M'[..,x]] => let [g, b:block(x:tm _,v:pred x x) |- IH[..,b.1,b.2]] =
+                            refl_par [g, b:block(x:tm _,v:pred x x)] [g,b |- M'[..,b.1]] in
+                            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- app M1 M2] => let [g |- IH1] = refl_par [g] [g |- M1] in
+                      let [g |- IH2] = refl_par [g] [g |- M2] in
+                      [g |- ap IH1 IH2]
+| [g |- tlam \a.M'] => let [g, a:ty |- IH] = refl_par _ [g, a:ty |- M'] in 
+                       [g |- tlm \a.IH]
+| [g |- tapp M' A] => let [g |- IH] = refl_par _ [g |- M'] in
+                      [g |- tap IH]
+
+;
+

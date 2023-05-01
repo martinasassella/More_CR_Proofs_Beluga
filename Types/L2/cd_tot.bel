@@ -1,7 +1,7 @@
 LF reduces : tm A -> type =
 | red_res : cd T1 T2 -> reduces T1;
 
-%An application reduces if its components do
+% An application reduces if its components do
 rec tot_app : (g:cctx) {E1 : [g |- tm (arr A B)]}{E2 : [g |- tm A]}
                       [g |- abs_or_not E1] -> [g |- cd E1 E1'] -> [g |- cd E2 E2']
                        -> [g |- reduces (app E1 E2)] =
@@ -15,7 +15,7 @@ mlam E1 => mlam E2 => fn d => fn s => fn r => case d of
                       [g |- red_res (cd_ap D S R)]
 ;
 
-%A t-application reduces if the first component does
+% A t-application reduces if the first component does
 rec tot_tapp : (g:cctx) {E1 : [g |- tm (all \a.A)]}{X : [g |- ty]}
                       [g |- tlam_or_not E1] -> [g |- cd E1 E1']
                        -> [g |- reduces (tapp E1 X)] =
