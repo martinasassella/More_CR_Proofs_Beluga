@@ -1,0 +1,15 @@
+LF conf_ord_prop : term -> term -> type =
+| conf_ord_result : mstep M' N -> mstep M'' N
+		-> conf_ord_prop M' M'';
+
+rec confluence : (g:pcctx) [g |- mstep M M'] 
+                -> [g |- mstep M M''] 
+				-> [g |- conf_ord_prop M' M''] =
+/ total d (confluence _ _ _ _ d _) /
+fn d => fn s => let [g |- D] = mbeta_to_mpar d in
+	let [g |- S] = mbeta_to_mpar s in
+	let [g |- conf_result H1 H2] = conf [g |- D] [g |- S] in
+	let [g |- H1'] = mpar_to_mbeta [g |- H1] in
+	let [g |- H2'] = mpar_to_mbeta [g |- H2] in
+	[g |- conf_ord_result H1' H2']
+;

@@ -1,10 +1,11 @@
 %Diamond property
 
-LF dia_prop : term -> term -> type =
-| dia_res : pred M' N -> pred M'' N -> dia_prop M' M''
+LF joinable : term -> term -> type =
+| dia_res : pred M' N -> pred M'' N -> joinable M' M''
 ;
 
-rec dia : (g:pcctx)[g |- pred M M'] -> [g |- pred M M''] -> [g |- dia_prop M' M''] =
+rec dia : (g:pcctx)[g |- pred M M'] -> [g |- pred M M''] 
+         -> [g |- joinable M' M''] =
 / total d (dia _ _ _ _ d _) /
 fn d => fn s => let [g |- S] : [g |- pred M M''] = s in
                 let [g |- red_res H] = cd_tot [g] [g |- M] in

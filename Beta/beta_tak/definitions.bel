@@ -4,6 +4,32 @@ LF term : type =
 | app : term -> term -> term
 ;
 
+%Ordinary Beta-reduction
+LF beta_red : term -> term -> type =
+| beta1 : beta_red (app (lam M1) M2) (M1 M2)
+| lm1   : ({x:term} beta_red (M x) (M' x)) -> beta_red (lam M) (lam M')
+| apl1  : beta_red M1 M1' -> beta_red (app M1 M2) (app M1' M2)
+| apr1  : beta_red M2 M2' -> beta_red (app M1 M2) (app M1 M2')
+;
+
+LF mstep : term -> term -> type =
+| id1 : mstep M M
+| step1 : beta_red M M' -> mstep M' M''
+          -> mstep M M''
+;
+
+schema ctx = term;
+
+rec trans_mstep : (g:ctx) [g |- mstep M M'] -> [g |- mstep M' M''] 
+                        -> [g |- mstep M M''] =
+/ total d (trans_mstep _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id1] => s
+| [g |- step1 D1 D2] => let [g |- IH] = trans_mstep [g |- D2] s in
+                          [g |- step1 D1 IH]
+;
+
+
 %Parallel reduction
 LF pred : term -> term -> type =
 | beta : ({x:term} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
@@ -15,6 +41,25 @@ LF pred : term -> term -> type =
 ;
 
 schema pctx = block(x:term, v:pred x x);
+
+%Reflexivity parallel reduction
+rec refl_par : {g:pctx}{M : [g |- term]}[g |- pred M M] =
+/ total m (refl_par _ m) /
+mlam g => mlam M => case [g |- M] of
+| [g |- #p.1] => [g |- #p.2]
+| [g |- lam \x.M'[..,x]] => let [g, b:block(x:term,v:pred x x) |- IH[..,b.1,b.2]] =
+                            refl_par [g, b:block(x:term,v:pred x x)] [g,b |- M'[..,b.1]] in 
+                            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- app M1 M2] => let [g |- IH1] = refl_par [g] [g |- M1] in 
+                      let [g |- IH2] = refl_par [g] [g |- M2] in 
+                      [g |- ap IH1 IH2]
+;
+
+LF mstep_pred : term -> term -> type =
+| id : mstep_pred M M
+| step : pred M M' -> mstep_pred M' M''
+          -> mstep_pred M M''
+;
 
 %Not lambda judgement
 LF notlam : term -> type =
@@ -31,6 +76,14 @@ LF cd : term -> term -> type =
           -> cd (app M1 M2) (app M1' M2')
 | cd_lm : ({x:term} notlam x -> cd x x -> cd (M x) (M' x))
           -> cd (lam M) (lam M')
+;
+
+LF conv : term -> term -> type =
+| ref : conv M M
+| sym  : conv M' M -> conv M M'
+| trans: conv M' M'' -> conv M  M'
+         -> conv M  M''
+| red  : mstep M M' -> conv M M'
 ;
 
 schema cctx = block(x:term, u: notlam x, v: cd x x);

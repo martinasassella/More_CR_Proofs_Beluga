@@ -1,0 +1,16 @@
+rec churchrosser : (g:pcctx) [g |- conv M M'] -> [g |- conf_ord_prop M M'] =
+/ total d (churchrosser _ _ _ d) /
+fn d => case d of
+| [g |- ref] => [g |- conf_ord_result id1 id1]
+| [g |- sym R] => 
+	let [g |- conf_ord_result H1 H2] = churchrosser [g |- R] in 
+	[g |- conf_ord_result H2 H1]
+| [g |- trans R1 R2] => 
+	let [g |- conf_ord_result IH1 IH2] = churchrosser [g |- R1] in
+	let [g |- conf_ord_result IH1' IH2'] = churchrosser [g |- R2] in
+	let [g |- conf_ord_result H1 H2] = confluence [g |- IH2'] [g |- IH1] in 
+	let [g |- H1'] = trans_mstep [g |- IH1'] [g |- H1] in
+	let [g |- H2'] = trans_mstep [g |- IH2] [g |- H2] in
+	[g |- conf_ord_result H1' H2']
+| [g |- red R] => [g |- conf_ord_result R id1]
+;

@@ -1,0 +1,17 @@
+LF strip_prop: term -> term -> type =
+| strip_result: mstep_pred M' N -> pred M'' N
+                -> strip_prop M' M'';
+
+
+rec strip : (g:pcctx)[g |- pred M M'] -> [g |- mstep_pred M M'']
+                    -> [g |- strip_prop M' M''] =
+/ total s (strip g m m' m'' r s) /
+fn r => fn s => case s of
+| [g |- id] => 
+        let [g |- R] = r in
+        [g |- strip_result id R]
+| [g |- step R1 R2] => 
+        let [g |- dia_res S1 S1'] = dia r [g |- R1] in
+        let [g |- strip_result S2 S2'] = strip [g |- S1'] [g |- R2] in
+        [g |- strip_result (step S1 S2) S2']
+;

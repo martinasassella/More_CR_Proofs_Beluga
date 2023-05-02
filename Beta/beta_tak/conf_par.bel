@@ -1,0 +1,15 @@
+LF conf_prop : term -> term -> type =
+| conf_result : mstep_pred M' N -> mstep_pred M'' N
+		-> conf_prop M' M'';
+
+rec conf : (g:pcctx) [g |- mstep_pred M M'] -> [g |- mstep_pred M M''] 
+                    -> [g |- conf_prop M' M''] =
+/ total d (conf _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id] => 
+    let [g |- S] = s in [g |- conf_result S id]
+| [g |- step D1 D2] => 
+    let [g |- strip_result D1' D2'] = strip [g |- D1] s in
+    let [g |- conf_result S1 S2] = conf [g |- D2] [g |- D1'] in
+    [g |- conf_result S1 (step D2' S2)]
+;
