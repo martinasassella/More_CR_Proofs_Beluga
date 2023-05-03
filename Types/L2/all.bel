@@ -1,0 +1,459 @@
+%  Well-typed Terms and Reductions
+--coverage
+
+LF ty : type =
+%   | base : ty       
+   | arr  : ty -> ty -> ty
+   | all : (ty -> ty) -> ty			 ;
+
+LF tm : ty -> type =
+   | abs : (tm A -> tm B) -> tm (arr A B)
+   | app : tm (arr A B) -> tm A -> tm B
+   | tlam : ({a:ty} tm (A a)) -> tm (all A)
+   | tapp : tm (all A) -> {B:ty} tm (A B);
+
+schema cxt = tm A + ty;
+
+LF step : tm A -> tm A -> type =
+  | rbeta : step (app (abs M) N) (M N)
+  | rbetall : step (tapp (tlam M) A) (M A)
+  | rabs  : ({x : tm A} step (M x) (M' x)) -> step (abs M) (abs M')
+  | rtlam  : ({x : ty} step (M x) (M' x)) -> step (tlam M) (tlam M')
+  | rappl : step M M' -> step (app M N) (app M' N)
+  | rappr : step N N' -> step (app M N) (app M N')
+  | tappl : step M M' -> step (tapp M A) (tapp M' A)			       ;
+
+LF mstep : tm A -> tm A -> type =
+   | m-refl :  mstep M M
+   | m-step : step M N -> mstep N M' -> mstep M M';
+
+% Properties of multi-step reductions
+% Transitivity of multi-step reductions
+rec m-trans : (g : cxt) {M1 : [g |- tm A[..]]}
+      [g |- mstep M1 M] -> [g |- mstep M M2]
+              -> [g |- mstep M1 M2] =
+/ total s1 (m-trans g a m1 m2 m s1) /
+mlam M1 => fn s1, s2 => case s1 of
+  | [_ |- m-refl] => s2
+  | [_ |- m-step S MS] =>
+        let [_ |- MS'] = m-trans _ [_ |- MS] s2 in
+        [_ |- m-step S MS'];
+
+% congruence of mstep: app case left
+rec mstep_appl : (g: cxt) {M  : [g |- tm (arr A[..] B[..])]}{M' : [g |- tm (arr A[..] B[..])]} {N  : [g |- tm A[..]]}
+        [g |- mstep M M'] -> [g |- mstep (app M N) (app M' N)] =
+/ total ms (mstep_appl g a b m m' n ms) /
+mlam M => mlam M' => mlam N => fn ms =>
+case ms of
+  | [_ |- m-refl] => [_ |- m-refl]
+  | [_ |- m-step S MS'] =>
+        let [_ |- MS''] = mstep_appl _ [_ |- M'] [_ |- N] [_ |- MS'] in
+    [_ |- m-step (rappl S) MS''] ;
+
+% % congruence of mstep: app right
+rec mstep_appr : (g: cxt) {M  : [g |- tm (arr A[..] B[..])]}{N  : [g |- tm A[..]]}{N' : [g |- tm A[..]]}
+        [g |- mstep N N'] -> [g |- mstep (app M N) (app M N')] =
+/ total ms (mstep_appr g a b m n n' ms) /
+mlam M => mlam N => mlam N' => fn ms =>
+case ms of
+  | [g |- m-refl] => [g |- m-refl]
+  | [g |- m-step S MS'] =>
+        let [_ |- MS''] = mstep_appr [_ |- M] [_ |- _] [_ |- N'] [_ |- MS'] in
+    [g |- m-step (rappr S) MS''] ;
+
+% congruence of mstep: abs case
+rec mstep_abs : (g : cxt) {M : [g , x: tm A[..] |- tm B[..]]}
+        [g, x:tm A[..] |- mstep M M']-> [g |- mstep (abs \x.M) (abs \x.M')] =
+    / total ms (mstep_abs g a b m m' ms) /
+    mlam M => fn s1 => case s1 of
+    | [g, x:tm A[..] |- m-refl] => [g |- m-refl]
+    | [g, x:tm A[..] |- m-step S MS] =>
+      let [g |- MS'] = mstep_abs [g, x : tm A[..] |- _ ] [g, x : tm A[..] |- MS] in 
+      [g |- m-step (rabs \x.S) MS'] ;
+
+% % congruence of mstep: tlam case
+rec mstep_tlam : (g : cxt) {M : [g , a:ty |- tm B[..,a]]}
+        [g, a:ty |- mstep M M']-> [g |- mstep (tlam \x.M) (tlam \x.M')] =
+/ total ms (mstep_tlam _ _ _ m ms) /
+    mlam M => fn s1 => case s1 of
+    | [g, a:ty |- m-refl] => [g |- m-refl]
+    | [g, a:ty |- m-step S MS] => 
+      let [g |- MS'] = mstep_tlam _ [g, a:ty |- MS] in   
+      [g |- m-step (rtlam \x.S) MS'] ;
+
+% congruence of mstep: tapp (only) case
+rec mstep_tapp : (g : cxt) {M  : [g |- tm (all \x.A)]} {B: [g |- ty]} [g |- mstep M M'] -> [g |- mstep (tapp M B) (tapp M' B)] =
+/ total ms (mstep_tapp _ _ _ _ _ ms) /
+ mlam M => mlam B => fn s1 => case s1 of
+ | [g |- m-refl] => [g |- m-refl]
+ | [g |- m-step S MS] => 
+ 		let [g |- MS'] = mstep_tapp _ [g |- B] [g |- MS] in 
+ 		[g |- m-step (tappl S) MS']
+ ;
+
+%Parallel reduction for system F
+LF pred : tm A -> tm A -> type =
+| lm : ({x:tm A} pred x x -> pred (M x) (M' x))
+       -> pred (abs M) (abs M')
+| ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2')
+| tlm : ({X:ty} pred (M X) (M' X))
+       -> pred (tlam M) (tlam M')
+| tap : pred M M'
+		-> pred (tapp M A) (tapp M' A)
+| beta : ({x:tm A} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (abs M1) M2) (M1' M2')
+| tbeta : ({X:ty} pred (M1 X) (M1' X))
+		 -> pred (tapp (tlam M1) A) (M1' A) ;
+
+LF mstep_pred : tm A -> tm A -> type =
+   | p-refl :  mstep_pred M M
+   | p-step : pred M N -> mstep_pred N M' -> mstep_pred M M' ;
+
+% Not term abstraction 
+LF notabs : tm A -> type =
+| nl_app : notabs (app _ _)
+| nl_tlam : notabs (tlam _)
+| nl_tapp : notabs (tapp _ _) ;
+
+% Not type abstraction
+LF nottlam : tm A -> type =
+| ntl_abs : nottlam (abs _)
+| ntl_app : nottlam (app _ _)
+| ntl_tapp : nottlam (tapp _ _) ;
+
+
+%Complete development
+LF cd : tm A -> tm A -> type =
+| cd_lm : ({x:tm A} notabs x -> cd x x -> cd (M x) (M' x))
+          -> cd (abs M) (abs M')
+| cd_ap : notabs M1 -> cd M1 M1' -> cd M2 M2'
+          -> cd (app M1 M2) (app M1' M2')
+| cd_tlm : ({a:ty} cd (M a) (M' a))
+		  -> cd (tlam M) (tlam M')
+| cd_tap : nottlam M1 -> cd M1 M1'
+          -> cd (tapp M1 A) (tapp M1' A)
+| cd_beta : ({x:tm A} notabs x -> cd x x -> cd (M x) (M' x)) -> cd N N'
+            -> cd (app (abs M) N) (M' N')
+| cd_tbeta : ({a:ty} cd (M a) (M' a))
+			 -> cd (tapp (tlam M) A) (M' A) ;
+
+schema pctx = some [A:ty] block(x:tm A, v:pred x x) + ty;
+schema nctx = some [a:ty] block(x:tm a, u:notabs x) + ty;
+schema tnctx = some [a:ty] block(x:tm a, u:nottlam x) + ty;
+schema cctx = some [A:ty] block(x:tm A, u: notabs x, v: cd x x) + ty;
+schema pcctx = some [A:ty] block(x:tm A, w: pred x x, u: notabs x, v: cd x x) + ty;
+
+% Reflexivity of parallel reduction
+rec refl_par : {g:pctx}{M : [g |- tm A]}[g |- pred M M] =
+/ total m (refl_par _ _ m) /
+mlam g => mlam M => case [g |- M] of
+| [g |- #p.1] => [g |- #p.2]
+| [g |- abs \x.M'[..,x]] => let [g, b:block(x:tm _,v:pred x x) |- IH[..,b.1,b.2]] =
+                            refl_par [g, b:block(x:tm _,v:pred x x)] [g,b |- M'[..,b.1]] in
+                            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- app M1 M2] => let [g |- IH1] = refl_par [g] [g |- M1] in
+                      let [g |- IH2] = refl_par [g] [g |- M2] in
+                      [g |- ap IH1 IH2]
+| [g |- tlam \a.M'] => let [g, a:ty |- IH] = refl_par _ [g, a:ty |- M'] in 
+                       [g |- tlm \a.IH]
+| [g |- tapp M' A] => let [g |- IH] = refl_par _ [g |- M'] in
+                      [g |- tap IH]
+ ;
+
+%Every term either is or isn't an abstraction
+LF abs_or_not : tm A -> type =
+| lon_abs : abs_or_not (abs _)
+| lon_not : notabs E -> abs_or_not E ;
+
+rec decide_abs : {g:nctx}{E : [g |- tm A]} [g |- abs_or_not E] =
+/ total e (decide_abs e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- lon_not #p.2]
+| [g |- abs \x.E'] => [g |- lon_abs]
+| [g |- app E1 E2] => [g |- lon_not (nl_app)]
+| [g |- tlam \a.E'] => [g |- lon_not (nl_tlam)]
+| [g |- tapp E1 E2] => [g |- lon_not (nl_tapp)] ;
+
+%Every term either is or isn't a t-lambda
+
+LF tlam_or_not : tm A -> type =
+| ton_tlam : tlam_or_not (tlam _)
+| ton_not : nottlam E -> tlam_or_not E ;
+
+
+rec decide_tlam : {g:tnctx}{E : [g |- tm A]} [g |- tlam_or_not E] =
+/ total e (decide_tlam e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- ton_not #p.2]
+| [g |- abs \x.E'] => [g |- ton_not (ntl_abs)]
+| [g |- app E1 E2] => [g |- ton_not (ntl_app)]
+| [g |- tlam \a.E'] => [g |- ton_tlam]
+| [g |- tapp E1 E2] => [g |- ton_not (ntl_tapp)] ;
+
+% Substitution lemma for pred
+rec subst : (g:pctx){M : [g, x: tm A |- tm B[..]]}{N : [g |- tm A]}
+                    [g, x:tm A, u:pred x x |- pred M[..,x] M'[..,x]] -> [g |- pred N N']
+                    -> [g |- pred M[..,N] M'[..,N']] =
+/ trust /
+mlam M => mlam N => fn d => fn s => case d of
+| [g, x:tm A, u:pred x x |- u] => s
+| [g, x:tm A, u:pred x x |- #p.2[..]] => [g |- #p.2]
+| [g, x:tm A, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] 
+%  :  [g, x : tm A, u : pred x x |- pred (abs (\x1. M1[.., x, x1])) (abs (\x1. M'1[.., x, x1]))]
+  => 
+              let [g |- S] = s in 
+              let [g, b:block(y:tm _, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst _ _ [g, b:block(y:tm _, v: pred y y), x:tm A[..], u:pred x x |- D[..,b.1,b.2,x,u]] 
+              [g,b |- S[..]] in 
+              [g |- lm \x.\u.IH[..,x,u]]
+| [g, x:tm A, u:pred x x |- beta (\y.\v.D1[..,y,v,x,u]) D2] => 
+              let [g |- S] = s in
+              let [g |- D2'] = subst _ _ [g,x:tm _,u |- D2] s in
+              let [g, b:block(y:tm _, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst _ _ [g, b:block(y:tm _, v: pred y y), x:tm A[..], u:pred x x |- D1[..,b.1,b.2,x,u]] 
+              [g,b |- S[..]] in
+              [g |- beta (\y.\v.IH[..,y,v]) D2']
+| [g, x:tm A, u:pred x x |- ap D1 D2] => 
+                      let [g |- IH1] = subst _ _ [g,x,u |- D1] s in
+                      let [g |- IH2] = subst _ _ [g,x,u |- D2] s in
+                      [g |- ap IH1 IH2]
+| [g, x:tm A, u:pred x x |- tap D] => 
+                      let [g |- IH] = subst _ _ [g,x,u |- D] s in 
+                      [g |- tap IH]                   
+| [g, x:tm A, u:pred x x |- tlm \a.D] => 
+                      let [g |- S] = s in
+                      let [g, a:ty |- IH] = subst _ _ [g,a:ty,x:tm A[..],u:pred x x |- D[..,x,u,a]] 
+                      [g,a:ty |- S[..]] in 
+                      [g |- tlm \a.IH]
+| [g, x:tm A, u:pred x x |- tbeta \a.D] => 
+                      let [g |- S] = s in 
+                      let [g, a:ty |- IH] = 
+                      subst _ _ [g,a:ty,x:tm A[..],u:pred x x |- D[..,x,u,a]] [g,a:ty |- S[..]] in 
+                      [g |- tbeta \a.IH] ;
+
+% Triangle property
+rec tri : (g:pcctx) {M : [g |- tm A]} [g |- cd M M'] -> [g |- pred M M''] -> [g |- pred M'' M'] =
+/ total d (tri _ _ _ _ _ d _) /
+mlam M => fn d => fn s => case d of
+| [g |- #p.4[..]] => let [g |- #p.2] = s in [g |- #p.2]
+| [g |- cd_beta (\x.\u.\v.D1[..,x,u,v]) D2] =>
+            (case s of
+            | [g |- beta (\y.\w.S1[..,y,w]) S2] =>
+                      let [g |- IH1] = tri _ [g |- D2] [g |- S2] in
+                      let [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri _ [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in
+                      subst _ _ [g,x:tm _,u:pred x x |- IH2[..,x,u]] [g |- IH1]
+            | [g |- ap (lm \y.\w.S1[..,y,w]) S2] =>
+                      let [g |- IH1] = tri _ [g |- D2] [g |- S2] in
+                      let [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri _ [g, b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in
+                      [g |- beta (\x.\v.IH2[..,x,v]) IH1]
+            )
+| [g |- cd_lm \x.\u.\v.D] =>
+            let [g |- lm \x.\v.S[..,x,v]] = s in
+            let [g,b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- IH[..,b.1,b.2]] =
+            tri _ [g,b:block(x:tm _, w: pred x x, u: notabs x, v: cd x x) |- D[..,b.1,b.3,b.4]]
+            [g,b |- S[..,b.1,b.2]] in
+            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- cd_ap D' D1 D2] =>
+            let [g |- ap H1 H2] = s in
+            let [g |- IH1] = tri _ [g |- D1] [g |- H1] in
+            let [g |- IH2] = tri _ [g |- D2] [g |- H2] in
+            [g |- ap IH1 IH2]
+| [g |- cd_tap D' D] => 
+            let [g |- tap S] = s in 
+            let [g |- IH] = tri _ [g |- D] [g |- S] in 
+            [g |- tap IH]
+| [g |- cd_tlm \a.D'] => 
+            let [g |- tlm \a.S] = s in 
+            let [g, a:ty |- IH] = tri _ [g, a:ty |- D'] [g, a:ty |- S] in 
+            [g |- tlm \a.IH]
+| [g |- cd_tbeta \a.D'] : [g |- cd (tapp (tlam (\a. M)) A) _] => 
+            let [g |- tbeta \a.S] = s in 
+            let [g, X:ty |- IH] = tri _ [g, X:ty |- D'] [g, X:ty |- S] in 
+            [g |- IH[..,A]] ;
+
+LF reduces : tm A -> type =
+| red_res : cd T1 T2 -> reduces T1;
+
+% An application reduces if its components do
+rec tot_app : (g:cctx) {E1 : [g |- tm (arr A B)]}{E2 : [g |- tm A]}
+                      [g |- abs_or_not E1] -> [g |- cd E1 E1'] -> [g |- cd E2 E2']
+                       -> [g |- reduces (app E1 E2)] =
+/ total d (tot_app _ _ _ _ _ d _ _) /
+mlam E1 => mlam E2 => fn d => fn s => fn r => case d of
+| [g |- lon_abs] => let [g |- cd_lm \x.\u.\v.S] = s in
+                    let [g |- R] = r in
+                    [g |- red_res (cd_beta (\x.\u.\v.S) R)]
+| [g |- lon_not D] => let [g |- S] = s in
+                      let [g |- R] = r in
+                      [g |- red_res (cd_ap D S R)] ;
+
+% A t-application reduces if the first component does
+rec tot_tapp : (g:cctx) {E1 : [g |- tm (all \a.A)]}{X : [g |- ty]}
+                      [g |- tlam_or_not E1] -> [g |- cd E1 E1']
+                       -> [g |- reduces (tapp E1 X)] =
+/ total d (tot_tapp _ _ _ _ d _ _) /
+mlam E1 => mlam E2 => fn d => fn s => case d of
+| [g |- ton_tlam] => let [g |- cd_tlm \a.S] = s in
+                     [g |- red_res (cd_tbeta (\a.S))]
+| [g |- ton_not D] => let [g |- S] = s in 
+                      [g |- red_res (cd_tap D S)] ;
+
+%% Complete development is total
+rec cd_tot : {g : cctx}{E : [g |- tm A]} [g |- reduces E] =
+/ total e (cd_tot _ _ e) /
+mlam g => mlam E =>  case [g |- E] of
+| [g |- #p.1] => [g |- red_res #p.3]
+| [g |- abs \x.E'] : [g |- tm (arr A1 B1)] =>
+        let [g, b:block(x:tm A1, u: notabs x, v: cd x x) |- red_res IH[..,b.1,b.2,b.3]] =
+        cd_tot [g,b:block(x:tm A1, u: notabs x, v: cd x x)] [g,b |- E'[..,b.1]] in
+        [g |- red_res (cd_lm \x.\u.\v.IH[..,x,u,v])]
+| [g |- app E1 E2] => let [g |- red_res D1] = cd_tot [g] [g |- E1] in
+                      let [g |- red_res D2] = cd_tot [g] [g |- E2] in
+                      let [g |- H] = decide_abs [g] [g |- E1] in
+                      tot_app _ _ [g |- H] [g |- D1] [g |- D2]
+| [g |- tlam \a.E'] => let [g, a:ty |- red_res IH] = cd_tot [g,a:ty] [g,a |- E'] in 
+                       [g |- red_res (cd_tlm \a.IH)]
+| [g |- tapp E1 E2] => let [g |- red_res D1] = cd_tot [g] [g |- E1] in 
+                       let [g |- H] = decide_tlam [g] [g |- E1] in
+                       tot_tapp _ _ [g |- H] [g |- D1] ;
+
+%Diamond property
+
+LF dia_prop : tm A -> tm A -> type =
+| dia_res : pred M' N -> pred M'' N -> dia_prop M' M'' ;
+
+rec dia : (g:pcctx){M: [g |- tm A]}[g |- pred M M'] -> [g |- pred M M''] -> [g |- dia_prop M' M''] =
+/ total d (dia _ _ _ _ _ d _) /
+mlam M => fn d => fn s => let [g |- S] : [g |- pred M M''] = s in
+                let [g |- red_res H] = cd_tot [g] [g |- M] in
+                let [g |- H1] = tri _ [g |- H] d in
+                let [g |- H2] = tri _ [g |- H] s in
+                [g |- dia_res H1 H2] ;
+
+
+% Strip  Lemma
+LF strip_prop: tm A -> tm A -> type =
+| strip_res: mstep_pred M' N -> pred M'' N -> strip_prop M' M'';
+
+rec strip : (g:pctx){M : [g |- tm A]} [g |- pred M M'] -> [g |- mstep_pred M M'']
+                -> [g |- strip_prop M' M''] =
+/ total {r s} (strip _ _ _ _ _ r s) /
+mlam M => fn r => fn s => case s of
+| [g |- p-refl] => let [g |- R] = r in
+               [g |- strip_res p-refl R]
+| [g |- p-step R1 R2] => let [g |- dia_res S1 S1'] = dia _ r [g |- R1] in
+                         let [g |- strip_res S2 S2'] = strip _ [g |- S1'] [g |- R2] in
+                         [g |- strip_res (p-step S1 S2) S2'] ;
+
+
+LF conf_prop : tm A -> tm A -> type =
+| conf_res : mstep_pred M' N -> mstep_pred M'' N -> conf_prop M' M'' ;
+
+rec conf : (g:pcctx){M: [g |- tm A]}[g |- mstep_pred M M'] -> [g |- mstep_pred M M''] -> [g |- conf_prop M' M''] =
+/ total d (conf _ _ _ _ _ d _) /
+mlam M => fn d => fn s => case d of
+| [g |- p-refl] => let [g |- D] = d in
+				   let [g |- S] = s in 
+				   [g |- conf_res S (p-refl)]
+| [g |- p-step D1 D2] => let [g |- strip_res H1 H2] = strip _ [g |- D1] s in 
+						 let [g |- conf_res H1' H2'] = conf _ [g |- D2] [g |- H1] in 
+						 [g |- conf_res H1' (p-step H2 H2')] ;
+
+% Equivalence of ordinary and parallel reduction for L2
+
+rec par_to_beta : (g:pctx) {M : [g |- tm A]} [g |- pred M N] -> [g |- mstep M N] =
+/ total d (par_to_beta _ _ _ _ d) /
+mlam M => fn d => case d of
+| [g |- #p.2] => [g |- m-refl]
+| {D1: [g |- pred M1 N1]}{D2: [g |- pred M2 N2]}[g |- ap D1 D2] =>
+                     let [g |- IH1] = par_to_beta _ [g |- D1] in
+                     let [g |- S1] : [g |- mstep (app y y1) (app x y1)]
+                      = mstep_appl _ _ [g |- M2] [g |- IH1] in
+                     let [g |- IH2] = par_to_beta _ [g |- D2] in
+                     let [g |- S2] = mstep_appr [g |- N1] _ _ [g |- IH2] in 
+                     m-trans _ [g |- S1] [g |- S2]
+| [g |- lm \y.\v.D[..,y,v]] =>
+          let [g, b:block(x:tm _, u:pred x x) |- IH[..,b.1]] = par_to_beta _ [g, b:block(x:tm _, u:pred x x)|- D[..,b.1,b.2]] in
+          mstep_abs _ [g,x:tm _ |- IH[..,x]]
+| [g |- beta (\y.\v.D1[..,y,v]) D2] =>
+  let {M1':[g,x:tm _ |-  tm _]}{IH1:[g,x:tm _ |-  mstep M1 M1']}
+  [g, b:block(x:tm _, u:pred x x) |- IH1[..,b.1]] = par_to_beta _ [g, b:block(x:tm _, u:pred x x)|- D1[..,b.1,b.2]] in
+  let {M2:[g |- tm _]}{IH2:[g |- mstep M2 M2']}[g |- IH2] = par_to_beta _ [g |- D2] in
+  let [g |- S'] = mstep_abs _ [g,x |- IH1[..,x]] in
+  let [g |- S''] = mstep_appl _ _ [g |- M2 ] [g |- S'] in 
+  let [g |- S'''] = mstep_appr [g |- abs \x.M1' ] _ _ [g |- IH2 ] in 
+  let [g |- S1']  = m-trans _ [g |- S''] [g |- S'''] in
+  m-trans _ [g |- S1'] [g |- m-step rbeta m-refl]
+
+| [g |- tap D] => let [g |- IH] = par_to_beta _ [g |- D] in 
+                  mstep_tapp _ _ [g |- IH]
+| [g |- tlm \a.D'] => let [g, z:ty |- IH] = par_to_beta _ [g, z:ty |- D'] in 
+                      mstep_tlam _ [g, z:ty |- IH] 
+| [g |- tbeta \a.D'] : [g |- pred (tapp (tlam (\a. y)) A1) _] => 
+                        let [g, z:ty |- IH] = par_to_beta _ [g, z:ty |- D'] in 
+                        let [g |- S'] = mstep_tlam _ [g,z:ty |- IH] in 
+                        let [g |- S''] = mstep_tapp _ [g |- A1] [g |- S'] in 
+                        m-trans _ [g |- S''] [g |- m-step rbetall m-refl] ;
+
+rec beta_to_par: (g:pctx) {M : [g |- tm A]}[g |- step M N] -> [g |- pred M N] =
+/ total d (beta_to_par _ _ _ _ d) /
+mlam M => fn d => case d of
+| [g |- rbeta] : [g |- step (app (abs \x. M1) M2) M1[..,M2]] =>
+          let [g,b:block(x:tm _,t:pred x x) |-  I1[..,b.1,b.2]] =
+          refl_par [g,b:block (x:tm _, t:pred x x)]  [g,b  |-  M1[..,b.1] ] in
+          let [g |- I2] = refl_par [g] [g |- M2 ] in
+          [g |- beta (\x.\u. I1[..,x,u]) I2]
+| [g |- rabs \y.D[..,y]] => let [g,b:block(x:tm _,u:pred x x) |- IH[..,b.1,b.2]] =
+                            beta_to_par _ [g,b:block(x:tm _,u:pred x x) |- D[..,b.1]] in
+                            [g |- lm \x.\u.IH[..,x,u]]
+| [g |- rappl D] : [g |- (step (app M1 M2) (app M1' M2))] =>
+                   let [g |- IH] = beta_to_par _ [g |- D] in
+                   let [g |- I2] = refl_par [g] [g |- M2] in
+                   [g |- ap IH I2]
+| [g |- rappr D] : [g |- (step (app M1 M2) (app M1 M2'))] =>
+                   let [g |- IH] = beta_to_par _ [g |- D] in
+                   let [g |- I1] = refl_par [g] [g |- M1] in
+                   [g |- ap I1 IH]
+| [g |- rtlam \y.D] => let [g, a:ty |- IH] = beta_to_par _ [g, a:ty |- D] in
+                       [g |- tlm \a.IH]
+| [g |- tappl D] => let [g |- IH] = beta_to_par _ [g |- D] in
+                    [g |- tap IH]
+| [g |- rbetall] : [g |- step (tapp (tlam \x. M1) A1) M1[..,A1]] =>
+          let [g, a:ty |- I1] = refl_par _  [g,a:ty |-  M1 ] in 
+          [g |- tbeta \a.I1] ;
+
+rec mpar_to_mbeta: (g:pctx) {M : [g |- tm A]}[g |- mstep_pred M N] -> [g |- mstep M N] =
+/ total d (mpar_to_mbeta _ _ _ _ d) /
+mlam M => fn d => case d of
+| [g |- p-refl] => [g |- m-refl]
+| [g |- p-step D1 D2] => let [g |- IH1] = par_to_beta _ [g |- D1] in
+                       let [g |- IH2] = mpar_to_mbeta _ [g |- D2] in
+                       m-trans _ [g |- IH1] [g |- IH2] ;
+
+rec mbeta_to_mpar: (g:pctx) {M : [g |- tm A]} [g |- mstep M N] -> [g |- mstep_pred M N] =
+/ total d (mbeta_to_mpar _ _ _ _ d) /
+mlam M => fn d => case d of
+| [g |- m-refl] => [g |- p-refl]
+| [g |- m-step D1 D2] => let [g |- IH1] = mbeta_to_mpar _ [g |- D2] in
+                        let [g |- IH2] = beta_to_par _ [g |- D1] in
+                        [g |- p-step IH2 IH1] ;
+
+% Church-Rosser property for beta reduction in L2
+
+LF cr_conc : tm A -> tm A -> type =
+| cr_res : mstep M1 N -> mstep M2 N -> cr_conc M1 M2 ;
+
+rec cr_beta : (g:cxt) {M : [g |- tm A]} [g |- mstep M M1] -> [g |- mstep M M2] -> [g |- cr_conc M1 M2] =
+/ total s (cr_beta _ _ _ _ _ d s) /
+mlam M => fn d => fn s => 
+        let [g |- D1] = mbeta_to_mpar _ d in
+        let [g |- S1] = mbeta_to_mpar _ s in 
+        let [g |- conf_res H1' H2'] = conf _ [g |- D1] [g |- S1] in 
+        let [g |- H1] = mpar_to_mbeta _ [g |- H1'] in
+        let [g |- H2] = mpar_to_mbeta _ [g |- H2'] in
+        [g |- cr_res H1 H2] ;

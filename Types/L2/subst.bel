@@ -10,8 +10,9 @@ rec subst : (g:pctx){M : [g, x: tm A |- tm B[..]]}{N : [g |- tm A]}
 mlam M => mlam N => fn d => fn s => case d of
 | [g, x:tm A, u:pred x x |- u] => s
 | [g, x:tm A, u:pred x x |- #p.2[..]] => [g |- #p.2]
-| [g, x:tm A, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] :
-  [g, x : tm A, u : pred x x |- pred (abs (\x1. M1[.., x, x1])) (abs (\x1. M'1[.., x, x1]))] => 
+| [g, x:tm A, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] 
+%  :  [g, x : tm A, u : pred x x |- pred (abs (\x1. M1[.., x, x1])) (abs (\x1. M'1[.., x, x1]))]
+  => 
               let [g |- S] = s in 
               let [g, b:block(y:tm _, v: pred y y) |- IH[..,b.1,b.2]] =
               subst _ _ [g, b:block(y:tm _, v: pred y y), x:tm A[..], u:pred x x |- D[..,b.1,b.2,x,u]] 

@@ -1,0 +1,336 @@
+% Untyped lambda terms
+
+--coverage
+
+LF term : type =
+| lam : (term -> term) -> term
+| app : term -> term -> term ;
+
+% Ordinary Beta-reduction
+LF beta_red : term -> term -> type =
+| beta1 : beta_red (app (lam M1) M2) (M1 M2)
+| lm1   : ({x:term} beta_red (M x) (M' x)) -> beta_red (lam M) (lam M')
+| apl1  : beta_red M1 M1' -> beta_red (app M1 M2) (app M1' M2)
+| apr1  : beta_red M2 M2' -> beta_red (app M1 M2) (app M1 M2') ;
+
+LF mstep : term -> term -> type =
+| id1 : mstep M M
+| step1 : beta_red M M' -> mstep M' M''
+          -> mstep M M'' ;
+
+schema ctx = term;
+
+rec trans_mstep : (g:ctx) [g |- mstep M M'] -> [g |- mstep M' M''] 
+                        -> [g |- mstep M M''] =
+/ total d (trans_mstep _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id1] => s
+| [g |- step1 D1 D2] => let [g |- IH] = trans_mstep [g |- D2] s in
+                          [g |- step1 D1 IH] ;
+
+
+% Parallel reduction
+LF pred : term -> term -> type =
+| beta : ({x:term} pred x x -> pred (M1 x) (M1' x)) -> pred M2 M2'
+         -> pred (app (lam M1) M2) (M1' M2')
+| lm : ({x:term} pred x x -> pred (M x) (M' x))
+       -> pred (lam M) (lam M')
+| ap : pred M1 M1' -> pred M2 M2'
+       -> pred (app M1 M2) (app M1' M2') ;
+
+schema pctx = block(x:term, v:pred x x);
+
+% Reflexivity parallel reduction
+rec refl_par : {g:pctx}{M : [g |- term]}[g |- pred M M] =
+/ total m (refl_par _ m) /
+mlam g => mlam M => case [g |- M] of
+| [g |- #p.1] => [g |- #p.2]
+| [g |- lam \x.M'[..,x]] => let [g, b:block(x:term,v:pred x x) |- IH[..,b.1,b.2]] =
+                            refl_par [g, b:block(x:term,v:pred x x)] [g,b |- M'[..,b.1]] in 
+                            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- app M1 M2] => let [g |- IH1] = refl_par [g] [g |- M1] in 
+                      let [g |- IH2] = refl_par [g] [g |- M2] in 
+                      [g |- ap IH1 IH2] ;
+
+LF mstep_pred : term -> term -> type =
+| id : mstep_pred M M
+| step : pred M M' -> mstep_pred M' M''
+          -> mstep_pred M M'' ;
+
+% Not lambda judgement
+LF notlam : term -> type =
+| nl_app : notlam (app _ _) ;
+
+schema nctx = block(x:term, v: notlam x);
+
+% Complete development
+LF cd : term -> term -> type =
+| cd_beta : ({x:term} notlam x -> cd x x -> cd (M x) (M' x)) -> cd N N'
+            -> cd (app (lam M) N) (M' N')
+| cd_ap : notlam M1 -> cd M1 M1' -> cd M2 M2'
+          -> cd (app M1 M2) (app M1' M2')
+| cd_lm : ({x:term} notlam x -> cd x x -> cd (M x) (M' x))
+          -> cd (lam M) (lam M') ;
+
+LF conv : term -> term -> type =
+| ref : conv M M
+| sym  : conv M' M -> conv M M'
+| trans: conv M' M'' -> conv M  M'
+         -> conv M  M''
+| red  : mstep M M' -> conv M M' ;
+
+schema cctx = block(x:term, u: notlam x, v: cd x x);
+schema pcctx = block(x:term, w: pred x x, u: notlam x, v: cd x x);
+
+% Every term either is or isn't a lambda
+
+LF lam_or_not : term -> type =
+| lon_lam : lam_or_not (lam _)
+| lon_not : notlam E -> lam_or_not E ;
+
+schema nctx = block(x:term, u:notlam x);
+
+rec decide : {g:nctx}{E : [g |- term]} [g |- lam_or_not E] =
+/ total e (decide e) /
+mlam g => mlam E => case [g |- E] of
+| [g |- #p.1] => [g |- lon_not #p.2]
+| [g |- lam \x.E'] => [g |- lon_lam]
+| [g |- app E1 E2] => [g |- lon_not (nl_app)] ;
+
+LF reduces : term -> type =
+| red_res : cd T1 T2 -> reduces T1;
+
+% An application reduces if its components do
+rec tot_app : (g:cctx) [g |- lam_or_not E1] -> [g |- cd E1 E1'] -> [g |- cd E2 E2']
+              -> [g |- reduces (app E1 E2)] =
+/ total d (tot_app _ _ _ _ _ d _ _) /
+fn d => fn s => fn r => case d of
+| [g |- lon_lam] => let [g |- cd_lm \x.\u.\v.S] = s in
+                    let [g |- R] = r in
+                    [g |- red_res (cd_beta (\x.\u.\v.S) R)]
+| [g |- lon_not D] => let [g |- S] = s in
+                      let [g |- R] = r in
+                      [g |- red_res (cd_ap D S R)] ;
+
+% %Complete development is total
+rec cd_tot : {g : cctx}{E : [g |- term]} [g |- reduces E] =
+/ total e (cd_tot _ e) /
+mlam g => mlam E =>  case [g |- E] of
+| [g |- #p.1] => [g |- red_res #p.3]
+| [g |- lam \x.E'[..,x]] =>
+        let [g, b:block(x:term, u: notlam x, v: cd x x) |- red_res IH[..,b.1,b.2,b.3]] =
+        cd_tot [g,b:block(x:term, u: notlam x, v: cd x x)] [g,b |- E'[..,b.1]] in
+        [g |- red_res (cd_lm \x.\u.\v.IH[..,x,u,v])]
+| [g |- app E1 E2] => let [g |- red_res D1] = cd_tot [g] [g |- E1] in
+                      let [g |- red_res D2] = cd_tot [g] [g |- E2] in
+                      let [g |- H] = decide [g] [g |- E1] in
+                      tot_app [g |- H] [g |- D1] [g |- D2] ;
+% Substitution lemma
+rec subst : (g:pctx)[g, x:term, u:pred x x |- pred M[..,x] M'[..,x]] -> [g |- pred N N'] -> [g |- pred M[..,N] M'[..,N']] =
+/ trust /
+fn d => fn s => case d of
+| [g, x:term, u:pred x x |- u] => s
+| [g, x:term, u:pred x x |- #p.2[..]] => [g |- #p.2]
+| [g, x:term, u:pred x x |- lm \y.\v.D[..,y,v,x,u]] =>
+              let [g |- S] = s in
+              let [g, b:block(y:term, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst [g, b:block(y:term, v: pred y y), x:term, u:pred x x |- D[..,b.1,b.2,x,u]] [g,b |- S[..]] in
+              [g |- lm \x.\u.IH[..,x,u]]
+| [g, x:term, u:pred x x |- beta (\y.\v.D1[..,y,v,x,u]) D2] =>
+              let [g |- S] = s in
+              let [g |- D2'] = subst [g,x,u |- D2] s in
+              let [g, b:block(y:term, v: pred y y) |- IH[..,b.1,b.2]] =
+              subst [g, b:block(y:term, v: pred y y), x:term, u:pred x x |- D1[..,b.1,b.2,x,u]] [g,b |- S[..]] in
+              [g |- beta (\y.\v.IH[..,y,v]) D2']
+| [g, x:term, u:pred x x |- ap D1 D2] =>
+                      let [g |- IH1] = subst [g,x,u |- D1] s in
+                      let [g |- IH2] = subst [g,x,u |- D2] s in
+                      [g |- ap IH1 IH2] ;
+
+% Triangle property
+
+rec tri : (g:pcctx) [g |- cd M M'] -> [g |- pred M M''] -> [g |- pred M'' M'] =
+/ total d (tri _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- #p.4[..]] => let [g |- #p.2] = s in [g |- #p.2]
+| [g |- cd_beta (\x.\u.\v.D1[..,x,u,v]) D2] => 
+            (case s of
+            | [g |- beta (\y.\w.S1[..,y,w]) S2] => 
+                      let [g |- IH1] = tri [g |- D2] [g |- S2] in
+                      let [g, b:block(x:term, w: pred x x, u: notlam x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri [g, b:block(x:term, w: pred x x, u: notlam x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in 
+                      subst [g,x:term,u:pred x x |- IH2[..,x,u]] [g |- IH1]
+            | [g |- ap (lm \y.\w.S1[..,y,w]) S2] => 
+                      let [g |- IH1] = tri [g |- D2] [g |- S2] in
+                      let [g, b:block(x:term, w: pred x x, u: notlam x, v: cd x x) |- IH2[..,b.1,b.2]] =
+                      tri [g, b:block(x:term, w: pred x x, u: notlam x, v: cd x x)|- D1[..,b.1,b.3,b.4]]
+                      [g,b |- S1[..,b.1,b.2]] in 
+                      [g |- beta (\x.\v.IH2[..,x,v]) IH1]
+
+            )
+| [g |- cd_lm \x.\u.\v.D] => 
+            let [g |- lm \x.\v.S[..,x,v]] = s in
+            let [g,b:block(x:term, w: pred x x, u: notlam x, v: cd x x) |- IH[..,b.1,b.2]] =
+            tri [g,b:block(x:term, w: pred x x, u: notlam x, v: cd x x) |- D[..,b.1,b.3,b.4]]
+            [g,b |- S[..,b.1,b.2]] in 
+            [g |- lm \x.\v.IH[..,x,v]]
+| [g |- cd_ap D' D1 D2] =>
+            let [g |- ap H1 H2] = s in
+            let [g |- IH1] = tri [g |- D1] [g |- H1] in
+            let [g |- IH2] = tri [g |- D2] [g |- H2] in
+            [g |- ap IH1 IH2] ;
+% Diamond property
+
+LF joinable : term -> term -> type =
+| dia_res : pred M' N -> pred M'' N -> joinable M' M'' ;
+
+rec dia : (g:pcctx)[g |- pred M M'] -> [g |- pred M M''] 
+         -> [g |- joinable M' M''] =
+/ total d (dia _ _ _ _ d _) /
+fn d => fn s => let [g |- S] : [g |- pred M M''] = s in
+                let [g |- red_res H] = cd_tot [g] [g |- M] in
+                let [g |- H1] = tri [g |- H] d in
+                let [g |- H2] = tri [g |- H] s in
+                [g |- dia_res H1 H2] ;
+LF strip_prop: term -> term -> type =
+| strip_result: mstep_pred M' N -> pred M'' N
+                -> strip_prop M' M'';
+
+
+rec strip : (g:pcctx)[g |- pred M M'] -> [g |- mstep_pred M M'']
+                    -> [g |- strip_prop M' M''] =
+/ total s (strip g m m' m'' r s) /
+fn r => fn s => case s of
+| [g |- id] => 
+        let [g |- R] = r in
+        [g |- strip_result id R]
+| [g |- step R1 R2] => 
+        let [g |- dia_res S1 S1'] = dia r [g |- R1] in
+        let [g |- strip_result S2 S2'] = strip [g |- S1'] [g |- R2] in
+        [g |- strip_result (step S1 S2) S2'] ;
+
+LF conf_prop : term -> term -> type =
+| conf_result : mstep_pred M' N -> mstep_pred M'' N
+		-> conf_prop M' M'';
+
+rec conf : (g:pcctx) [g |- mstep_pred M M'] -> [g |- mstep_pred M M''] 
+                    -> [g |- conf_prop M' M''] =
+/ total d (conf _ _ _ _ d _) /
+fn d => fn s => case d of
+| [g |- id] => 
+    let [g |- S] = s in [g |- conf_result S id]
+| [g |- step D1 D2] => 
+    let [g |- strip_result D1' D2'] = strip [g |- D1] s in
+    let [g |- conf_result S1 S2] = conf [g |- D2] [g |- D1'] in
+    [g |- conf_result S1 (step D2' S2)] ;
+rec lm1* : (g:ctx) [g,x:term |-  mstep M M']
+      ->  [g |- mstep (lam \x.M) (lam \x.M')] =
+/ total d (lm1* _ _ _ d) /
+fn d => case d of
+| [g,x:term |-  id1] => [g |- id1]
+| [g,x:term |-  step1 D1 D2] =>  let [g |- IH] = lm1* [g, x |- D2] in
+                                 [g |- step1 (lm1 \x.D1) IH] ;
+
+rec apl1* :  (g:ctx) {M2:[g |- term]}[g |- mstep M1 M1'] -> [g |- mstep (app M1 M2) (app M1' M2)] =
+/ total s (apl1* _ _ _ s) /
+mlam M2 => fn s => case s of
+| [g |- id1] => [g |- id1]
+| [g |- step1 S1 S2] => let [g |- IH] = apl1* [g |- M2] [g |- S2] in
+                      [g |- step1 (apl1 S1) IH] ;
+
+rec apr1* : (g:ctx){M1:[g |- term]} [g |- mstep M2 M2'] -> [g |- mstep (app M1 M2) (app M1 M2')] =
+/ total s (apr1* _ _ _ s) /
+mlam M1 => fn s => case s of
+| [g |- id1] => [g |- id1]
+| [g |- step1 S1 S2] => let [g |- IH] = apr1* [g |- M1] [g |- S2] in
+                      [g |- step1 (apr1 S1) IH] ;
+rec beta_to_par: (g:pctx) [g |- beta_red M N] -> [g |- pred M N] =
+/ total d (beta_to_par _ _ _ d) /
+fn d => case d of
+| [g |- beta1] : [g |- beta_red (app (lam \x. M1) M2) M1[..,M2]] =>
+          let [g,b:block(x:term,t:pred x x) |-  I1[..,b.1,b.2]] =
+          refl_par [g,b:block (x:term, t:pred x x)]  [g,b  |-  M1[..,b.1] ] in
+          let [g |- I2] = refl_par [g] [g |- M2 ] in
+          [g |- beta (\x.\u. I1[..,x,u]) I2]
+| [g |- lm1 \y.D[..,y]] => let [g,b:block(x:term,u:pred x x) |- IH[..,b.1,b.2]] =
+                            beta_to_par [g,b:block(x:term,u:pred x x) |- D[..,b.1]] in
+                            [g |- lm \x.\u.IH[..,x,u]]
+| [g |- apl1 D] : [g |- (beta_red (app M1 M2) (app M1' M2))] =>
+                   let [g |- IH] = beta_to_par [g |- D] in
+                   let [g |- I2] = refl_par [g] [g |- M2] in
+                   [g |- ap IH I2]
+| [g |- apr1 D] : [g |- (beta_red (app M1 M2) (app M1 M2'))] =>
+                   let [g |- IH] = beta_to_par [g |- D] in
+                   let [g |- I1] = refl_par [g] [g |- M1] in
+                   [g |- ap I1 IH] ;
+
+
+rec par_to_beta : (g:pctx) [g |- pred M N] -> [g |- mstep M N] =
+/ total d (par_to_beta _ _ _ d) /
+fn d => case d of
+| [g |- #p.2] => [g |- id1]
+| {D1: [g |- pred M1 N1]}{D2: [g |- pred M2 N2]}[g |- ap D1 D2] =>
+                     let [g |- IH1] = par_to_beta [g |- D1] in
+                     let [g |- S1]  = apl1* [g |- M2] [g |- IH1] in
+                     let [g |- IH2] = par_to_beta [g |- D2] in
+                     let [g |- S2] = apr1* [g |- N1 ] [g |- IH2] in
+                     trans_mstep [g |- S1] [g |- S2]
+| [g |- lm \y.\v.D[..,y,v]] =>
+          let [g, b:block(x:term, u:pred x x) |- IH[..,b.1]] = par_to_beta [g, b:block(x:term, u:pred x x)|- D[..,b.1,b.2]] in
+          lm1* [g,x:term |- IH[..,x]]
+| [g |- beta (\y.\v.D1[..,y,v]) D2] =>
+  let {M1':[g,x:term |-  term]}{IH1:[g,x:term |-  mstep M1 M1']}
+  [g, b:block(x:term, u:pred x x) |- IH1[..,b.1]] = par_to_beta [g, b:block(x:term, u:pred x x)|- D1[..,b.1,b.2]] in
+  let {M2:[g |- term]}{IH2:[g |- mstep M2 M2']}[g |- IH2] = par_to_beta [g |- D2] in
+  let [g |- S'] = lm1* [g,x |- IH1[..,x]] in
+  let [g |- S''] = apl1*  [g |- M2 ] [g |- S'] in
+  let [g |- S'''] = apr1* [g |- lam \x. M1' ] [g |- IH2 ] in
+  let [g |- S1']  = trans_mstep [g |- S''] [g |- S'''] in
+    trans_mstep [g |- S1'] [g |- step1 beta1 id1 ] ;
+
+rec mpar_to_mbeta: (g:pctx) [g |- mstep_pred M N] -> [g |- mstep M N] =
+/ total d (mpar_to_mbeta _ _ _ d) /
+fn d => case d of
+| [g |- id] => [g |- id1]
+| [g |- step D1 D2] => let [g |- IH1] = par_to_beta [g |- D1] in
+                       let [g |- IH2] = mpar_to_mbeta [g |- D2] in
+                       trans_mstep [g |- IH1] [g |- IH2] ;
+
+rec mbeta_to_mpar: (g:pctx) [g |- mstep M N] -> [g |- mstep_pred M N] =
+/ total d (mbeta_to_mpar _ _ _ d) /
+fn d => case d of
+| [g |- id1] => [g |- id]
+| [g |- step1 D1 D2] => let [g |- IH1] = mbeta_to_mpar [g |- D2] in
+                        let [g |- IH2] = beta_to_par [g |- D1] in
+                        [g |- step IH2 IH1];
+
+LF conf_ord_prop : term -> term -> type =
+| conf_ord_result : mstep M' N -> mstep M'' N
+		-> conf_ord_prop M' M'';
+
+rec confluence : (g:pcctx) [g |- mstep M M'] 
+                -> [g |- mstep M M''] 
+				-> [g |- conf_ord_prop M' M''] =
+/ total d (confluence _ _ _ _ d _) /
+fn d => fn s => let [g |- D] = mbeta_to_mpar d in
+	let [g |- S] = mbeta_to_mpar s in
+	let [g |- conf_result H1 H2] = conf [g |- D] [g |- S] in
+	let [g |- H1'] = mpar_to_mbeta [g |- H1] in
+	let [g |- H2'] = mpar_to_mbeta [g |- H2] in
+	[g |- conf_ord_result H1' H2'] ;
+rec churchrosser : (g:pcctx) [g |- conv M M'] -> [g |- conf_ord_prop M M'] =
+/ total d (churchrosser _ _ _ d) /
+fn d => case d of
+| [g |- ref] => [g |- conf_ord_result id1 id1]
+| [g |- sym R] => 
+	let [g |- conf_ord_result H1 H2] = churchrosser [g |- R] in 
+	[g |- conf_ord_result H2 H1]
+| [g |- trans R1 R2] => 
+	let [g |- conf_ord_result IH1 IH2] = churchrosser [g |- R1] in
+	let [g |- conf_ord_result IH1' IH2'] = churchrosser [g |- R2] in
+	let [g |- conf_ord_result H1 H2] = confluence [g |- IH2'] [g |- IH1] in 
+	let [g |- H1'] = trans_mstep [g |- IH1'] [g |- H1] in
+	let [g |- H2'] = trans_mstep [g |- IH2] [g |- H2] in
+	[g |- conf_ord_result H1' H2']
+| [g |- red R] => [g |- conf_ord_result R id1] ;
