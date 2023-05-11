@@ -19,7 +19,11 @@ LF diff : term -> term -> type =
 | dla : diff (app _ _) (lam _)
 | dac1 : diff E1 F1 → diff (app E1 E2) (app F1 F2)
 | dac2 : diff E2 F2 → diff (app E1 E2) (app F1 F2)
-| dll : ({x:term} 	diff (M x) (N x)) →    diff (lam  M) (lam N)
+| dll : ({x:term} ({L : term → term} diff x (lam L)) → ({L : term → term} diff (lam L) x) →
+	 ({A1: term} {A2: term} diff x (app A1 A2) )
+	     → 	 ({A1: term} {A2: term} diff (app A1 A2) x  ) 
+	 → diff (M x) (N x))
+	→    diff (lam  M) (lam N)
 ;
 
 LF not_joinable : term -> term -> type =
@@ -40,7 +44,7 @@ LF gencex : nat -> term -> term -> term -> type =
 
 
 % --query 1 1  (hei N (lam (\x.  x))).
---query 1 1 (gencex (sc (sc (sc z))) M M1 M2).
+% --query 1 1 (gencex (sc (sc (sc z))) M M1 M2).
 % diff : term -> term -> type.
 
 % dal : diff  (lam  _) (app _ _).

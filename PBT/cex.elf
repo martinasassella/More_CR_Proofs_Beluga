@@ -66,8 +66,6 @@ h3: hei (sc H) (app M N)
 h4: hei (sc H) (lam M)
      <- ({x:term} ({h:nat} hei h x) -> hei H (M x)).
 
-3 = sc (sc (sc z)).
-4 = sc 3.
 gencex : nat -> term -> term -> term -> type.
 
 c : gencex I M M1 M2
