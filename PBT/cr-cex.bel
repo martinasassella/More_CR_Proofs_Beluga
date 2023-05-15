@@ -27,8 +27,8 @@ LF diff : term -> term -> type =
 ;
 
 LF not_joinable : term -> term -> type =
-  | nj : diff M1 M2 → step M1 P1 → step M2 P2 → diff P1 P2 → not_joinable M1 M2
-;
+ | nj :  diff P1 P2 → step M1 P1 → step M2 P2 → diff M1 M2 →  not_joinable M1 M2 ;
+
 
 nat : type.
 z : nat.
@@ -40,21 +40,17 @@ LF hei : nat -> term -> type =
 ;
 
 LF gencex : nat -> term -> term -> term -> type =
-| c : hei I M → step M  M1 → step M  M2 → not_joinable M1 M2 → gencex I M M1 M2;
+  | c : not_joinable M1 M2 →  step M M1 →  step M M2 → hei I M →  gencex I M M1 M2;
 
 
-% --query 1 1  (hei N (lam (\x.  x))).
-% --query 1 1 (gencex (sc (sc (sc z))) M M1 M2).
-% diff : term -> term -> type.
 
-% dal : diff  (lam  _) (app _ _).
-% dla : diff  (app _ _) (lam  _) .
-% dac1 : diff (app E1 E2) (app F1 F2)
-% 	<- diff E1 F1.
-% dac2 : diff (app E1 E2) (app F1 F2)
-% 	<- diff E2 F2.
-% dl2 : diff (lam  M) (lam N)
-%        <- {x} ({L} diff x (lam L) -> diff (lam L ) x) ->
-% 	  ({A1}{A2} diff x (app A1 A2) -> diff (app A1 A2 ) x) 
-% 	  ->	 diff (M x) (N x). % sound but incomplete
 
+ --query 1 1 (gencex (sc (sc (sc (sc z)))) M M1 M2).
+
+%  M2 = app (app (lam (\x. x)) (app (lam (\x. x)) (lam (\x. x))))
+% (app (app (lam (\x. x)) (lam (\x. x))) (app (lam (\x. x)) (lam (\x. x))));
+% M1 = app (app (app (lam (\x. x)) (lam (\x. x))) (lam (\x. x)))
+% (app (app (lam (\x. x)) (lam (\x. x))) (app (lam (\x. x)) (lam (\x. x))));
+% M = app (app (app (lam (\x. x)) (lam (\x. x)))
+%         (app (lam (\x. x)) (lam (\x. x))))
+% (app (app (lam (\x. x)) (lam (\x. x))) (app (lam (\x. x)) (lam (\x. x))));.

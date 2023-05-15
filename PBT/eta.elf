@@ -3,7 +3,7 @@ unit : ty.
 arr  : ty -> ty -> ty.
 
 tm : ty -> type . %name tm M.
-   lam : (tm A -> tm B) -> tm (arr A B).
+lam : (tm A -> tm B) -> tm (arr A B).
 app : tm (arr A B) -> tm A -> tm B.
 ep : tm unit.
 
@@ -11,9 +11,9 @@ ep : tm unit.
 step : tm A -> tm A -> type.
 reta : step (lam [x] (app M x)) M.
 ueta: step M ep.
-    rlam  : ({x : tm A} step (M x) (M' x)) -> step (lam M) (lam M').
-    rappl : step M M' -> step (app M N) (app M' N).
-    rappr : step N N' -> step (app M N) (app M N').
+rlam  : ({x : tm A} step (M x) (M' x)) -> step (lam M) (lam M').
+rappl : step M M' -> step (app M N) (app M' N).
+rappr : step N N' -> step (app M N) (app M N').
 
 
 diff : tm A -> tm A -> type.
@@ -63,8 +63,8 @@ gencex : nat -> tm A -> tm A -> tm A -> type.
 
 c : gencex I M M1 M2
      <- hei I M
-     <-  step M  M1
-     <-  step M M2
+     <- step M  M1
+     <- step M M2
      <- not_joinable M1 M2.
 
 %query 1 1 gencex 2 M M1 M2.
