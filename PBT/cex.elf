@@ -1,3 +1,39 @@
+
+% Cex to CR(beta) untyped
+
+%%% Untyped lambda-calculus
+
+term : type.  %name term M.
+
+lam : (term -> term) -> term.
+app : term -> term -> term.
+
+--> : term -> term -> type.  %infix none 10 -->.
+			     %name --> R.
+
+beta1 :   (app (lam M1) M2) --> M1 M2.
+
+lm1   :       ({x:term} M x --> M' x)
+      ->            (lam M) --> (lam M').
+
+apl1  :              M1 --> M1'
+      ->    (app M1 M2) --> (app M1' M2).
+
+apr1  :              M2 --> M2'
+      ->    (app M1 M2) --> (app M1 M2').
+
+% Multi-step reduction
+
+-->* : term -> term -> type.  %infix none 10 -->*.
+			      %name -->* R*.
+
+id1   :    M -->* M.
+
+% step1 :    M' --> M'' ->  M  -->* M' -> M  -->* M''.
+
+step1 : M --> M' -> M' -->* M'' -> M -->* M''.
+
+
 % incomplete implementation of not equal
 
 diff : term -> term -> type.
@@ -9,7 +45,7 @@ dac1 : diff (app E1 E2) (app F1 F2)
 dac2 : diff (app E1 E2) (app F1 F2)
 	<- diff E2 F2.
 dl2 : diff (lam  M) (lam N)
-       <- {x:term} ({L: term} diff x (lam L) -> diff (lam L ) x) ->
+       <- {x:term} ({L: term -> term} diff x (lam L) -> diff (lam L ) x) ->
 	  ({A1:term}{A2:term} diff x (app A1 A2) -> diff (app A1 A2 ) x) 
 	  ->	 diff (M x) (N x). % sound but incomplete
 
@@ -76,15 +112,3 @@ c : gencex I M M1 M2
 
 %query 1 1 gencex 3 M M1 M2.
 
-%% not used
-
-neutral : term -> type.
-nf : term -> type.
-nfl: nf (lam  M)
-      <- ({x} neutral x -> nf (M x)).
-
-
-nn: nf M <- neutral M.
-na: neutral (app M N)
-     <- neutral M
-	<- nf N.
