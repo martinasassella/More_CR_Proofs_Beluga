@@ -47,7 +47,7 @@ rec mpar_to_mbeta: (g:ctx) mstep_pred [g |- M] [g |- N] -> mstep [g |- M] [g |- 
 / total d (mpar_to_mbeta _ _ _ d) /
 fn d => case d of
 | id => id1
-| step d1 d2 => let ih1 = par_to_beta d1 in
+| stp d1 d2 => let ih1 = par_to_beta d1 in
                 let ih2 = mpar_to_mbeta d2 in
                 trans_mstep ih1 ih2
 ;
@@ -58,5 +58,5 @@ fn d => case d of
 | id1 => id
 | step1 d1 d2 => let ih1 = mbeta_to_mpar d2 in
                  let ih2 = beta_to_par d1 in
-                 step ih2 ih1
+                 stp ih2 ih1
 ;

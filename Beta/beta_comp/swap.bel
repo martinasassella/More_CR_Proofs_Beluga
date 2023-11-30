@@ -3,10 +3,10 @@
 %Substitution lemma
 %
 
-inductive swap : {g:ctx} {h:ctx}{$S: [h |- g]} ctype =
-| sw_nil : swap [g] [g] [ g  ⊢ .. ]
-| sw_last : swap [g,x:term,y:term] [g,x:term,y:term] [g, x:term, y:term ⊢ .., y, x]
-| sw_ind : swap [g] [h] [h ⊢ $S] -> swap [g,x:term] [h,x:term] [h, x ⊢ $S[..], x]
+inductive swap : {g:ctx} {h:ctx}{$S: $[h |- g]} ctype =
+| sw_nil : swap [g] [g] $[ g  ⊢ .. ]
+| sw_last : swap [g,x:term,y:term] [g,x:term,y:term] $[g, x:term, y:term ⊢ .., y, x]
+| sw_ind : swap [g] [h] $[h ⊢ $S] -> swap [g,x:term] [h,x:term] $[h, x ⊢ $S[..], x]
 ;
 
 rec shift :  isVar [g, x:term ⊢ #p] → isVar [g, y:term, x:term ⊢ #p[..,x]] =
@@ -16,7 +16,7 @@ fn v ⇒ let vp [g, x:term |- #p] = v in
 ;
 
 rec swap_var :  isVar [g ⊢ M] → 
-               swap [g] [h] [h ⊢ $S] →
+               swap [g] [h] $[h ⊢ $S] →
 	       isVar [h ⊢ M[$S]] = 
 / total s (swap_var _ _ _ _ v s) /
  fn v ⇒ fn s ⇒ let vp [g, x : term  |- #q] = v in
@@ -34,7 +34,7 @@ rec swap_var :  isVar [g ⊢ M] →
 
 		     
 rec exc0 : (g:ctx) (h : ctx) pred [g |- M] [g |- M']
-                            -> swap [g] [h] [h ⊢ $S] 
+                            -> swap [g] [h] $[h ⊢ $S] 
                             -> pred [h |- M[$S]] [h |- M'[$S]] =
 / total d (exc0 g h m m' s d) / 
 fn p => fn s => case p of
