@@ -51,15 +51,11 @@ fn p => fn s => case p of
 	ap e1 e2
 ;
 
-
-
-
 rec exc1 : (g:ctx) pred [g,w:term,y:term |- M[..,w,y]] [g,w:term,y:term |- M'[..,w,y]]
                   -> pred [g,y:term,x:term |- M[..,x,y]] [g,y:term,x:term |- M'[..,x,y]] =
 / total d (exc1 _ _ _ d) / 
 fn d =>  exc0 d sw_last
 ;              
-
 
 rec weak : (g:ctx) pred [g |- N] [g |- N']
 	   -> pred [g, y:term |- N[..]] [g, y: term |- N'[..]] =
