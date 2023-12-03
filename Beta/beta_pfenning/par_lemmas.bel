@@ -18,8 +18,8 @@ rec append : (g:rctx)[g |- mstep_pred M M'] -> [g |- mstep_pred M' M''] -> [g |-
 / total d (append _ _ _ d _) /
 fn d => fn s => case d of
 | [g |- id] => s
-| [g |- step D1 D2] => (case s of
+| [g |- stepm D1 D2] => (case s of
                       | [g |- id] => d
-                      | [g |- step S1 S2] => let [g |- IH] = append [g |- D2] s in
-                        [g |- step D1 IH])
+                      | [g |- stepm S1 S2] => let [g |- IH] = append [g |- D2] s in
+                        [g |- stepm D1 IH])
 ;

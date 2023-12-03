@@ -12,7 +12,7 @@ LF pred : term -> term -> type =
 %Multi step parallel reduction
 LF mstep_pred : term -> term -> type =
 | id : mstep_pred M M
-| step : pred M M' -> mstep_pred M' M''
+| stepm : pred M M' -> mstep_pred M' M''
           -> mstep_pred M M''
 ;
 

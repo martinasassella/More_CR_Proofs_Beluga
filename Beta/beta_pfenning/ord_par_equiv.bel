@@ -50,7 +50,7 @@ rec mpar_to_mbeta: (g:rctx) [g |- mstep_pred M N] -> [g |- mstep M N] =
 / total d (mpar_to_mbeta _ _ _ d) /
 fn d => case d of
 | [g |- id] => [g |- id1]
-| [g |- step D1 D2] => let [g |- IH1] = par_to_beta [g |- D1] in
+| [g |- stepm D1 D2] => let [g |- IH1] = par_to_beta [g |- D1] in
                        let [g |- IH2] = mpar_to_mbeta [g |- D2] in
                        trans_mstep [g |- IH1] [g |- IH2]
 ;
@@ -61,7 +61,7 @@ fn d => case d of
 | [g |- id1] => [g |- id]
 | [g |- step1 D1 D2] => let [g |- IH1] = mbeta_to_mpar [g |- D2] in
                         let [g |- IH2] = beta_to_par [g |- D1] in
-                        [g |- step IH2 IH1]
+                        [g |- stepm IH2 IH1]
 ;
 
 rec conv_pred_to_conv : [ |- conv_pred M N] -> [ |- conv M N] =
