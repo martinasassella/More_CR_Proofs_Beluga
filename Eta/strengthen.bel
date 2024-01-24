@@ -6,7 +6,9 @@ inductive exStrEtaRed : (g:ctx) [g,x:term |- eta_red M[..] N] -> ctype =
 ;
 
 rec strengthen : {g : ctx} {D : [g, x:term |- eta_red M[..] N]} -> exStrEtaRed [g, x:term |- D] =
- / trust /
+/ total d (strengthen d) /
+
+% / trust /
  mlam g => mlam D => case [g, x:term |- D] of
  | [g,x:term |- eta] => exStrEta [g, x:term |- D[..]] [g |- eta] [g,x:term |- refl]
  | [g,x:term |- cong_lam \y.D'[..,x,y]] =>
